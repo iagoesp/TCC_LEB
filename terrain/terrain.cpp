@@ -1263,9 +1263,7 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     int octaves = 8;
     float gain = 0.01f;
     float lacunarity = 0.01f;
-    std::ofstream myfile;
-    //myfile.open ("/home/iago/Desktop/UFBA/LongestEdgeBisection2D/44_ridged_example2.csv");
-    //float n = Simplex::iqMatfBm(pos, octaves, glm::mat2(2.3f, -1.5f, 1.5f, 2.3f), gain);
+
     for (int j = 0; j < h; ++j)
     for (int i = 0; i < w; ++i) {
         /*
@@ -1273,6 +1271,28 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
         float zf = float(z) / float((1 << 16) - 1);
         uint16_t z2 = zf * zf * ((1 << 16) - 1);
         */
+
+        glm::vec3 pos = glm::vec3(i,j,0);
+        float zf = Simplex::ridgedNoise(pos);//, octaves, lacunarity, gain)*0.5f;
+
+        uint16_t z = uint16_t(zf * ((1 << 16) - 1));
+        uint16_t z2 = zf * zf * ((16 >> 1) - 1);
+
+        texels2[i + w * j] = z;
+
+        dmap[    2 * (i + w * j)] = z;
+        dmap[1 + 2 * (i + w * j)] = z2;
+    }
+
+    /*//myfile.open ("/home/iago/Desktop/UFBA/LongestEdgeBisection2D/44_ridged_example2.csv");
+    //float n = Simplex::iqMatfBm(pos, octaves, glm::mat2(2.3f, -1.5f, 1.5f, 2.3f), gain);
+    for (int j = 0; j < h; ++j)
+    for (int i = 0; i < w; ++i) {
+        
+        uint16_t z = texels[i + w * j]; // in [0,2^16-1]
+        float zf = float(z) / float((1 << 16) - 1);
+        uint16_t z2 = zf * zf * ((1 << 16) - 1);
+        
         glm::vec3 pos = glm::vec3(i,j,0);
         float zf = Simplex::ridgedNoise(pos);//, octaves, lacunarity, gain)*0.5f;
 
@@ -1292,13 +1312,11 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
         myfile << zf;
         myfile << ", ";
         myfile << z2;
-        myfile << "\n";*/
+        myfile << "\n";
         
         dmap[    2 * (i + w * j)] = z;
         dmap[1 + 2 * (i + w * j)] = z2;
-    }
-    //myfile.close();
-
+    }*/
     // Load nmap from dmap
     LoadNmapTexture16(smapID, djgt, texels2);
 
