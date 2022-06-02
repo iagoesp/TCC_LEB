@@ -441,6 +441,8 @@ imgui_impl.h
 /home/iago/Desktop/UFBA/TCC_LEB/terrain/imgui_impl.h
 grid.h
 /home/iago/Desktop/UFBA/TCC_LEB/terrain/grid.h
+simplex.h
+/home/iago/Desktop/UFBA/TCC_LEB/terrain/simplex.h
 cstdio
 -
 cstdlib
@@ -460,6 +462,10 @@ cmath
 iostream
 -
 fstream
+-
+cstdlib
+-
+ctime
 -
 stb_image.h
 /home/iago/Desktop/UFBA/TCC_LEB/terrain/stb_image.h
