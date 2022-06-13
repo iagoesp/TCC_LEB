@@ -31,6 +31,9 @@ CMakeFiles/terrain.dir/submodules/imgui/imgui_widgets.cpp.o: ../submodules/imgui
 CMakeFiles/terrain.dir/submodules/imgui/imgui_widgets.cpp.o: ../submodules/imgui/imgui_widgets.cpp
 CMakeFiles/terrain.dir/submodules/imgui/imgui_widgets.cpp.o: ../submodules/imgui/imstb_textedit.h
 
+CMakeFiles/terrain.dir/terrain/OpenSimplexNoise.cpp.o: ../terrain/OpenSimplexNoise.cpp
+CMakeFiles/terrain.dir/terrain/OpenSimplexNoise.cpp.o: ../terrain/OpenSimplexNoise.h
+
 CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.o: ../submodules/glfw/include/GLFW/glfw3.h
 CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.o: ../submodules/glfw/include/GLFW/glfw3native.h
 CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.o: ../submodules/imgui/imconfig.h
@@ -48,6 +51,7 @@ CMakeFiles/terrain.dir/terrain/terrain.cpp.o: ../submodules/libcbt/cbt.h
 CMakeFiles/terrain.dir/terrain/terrain.cpp.o: ../submodules/libleb/leb.h
 CMakeFiles/terrain.dir/terrain/terrain.cpp.o: ../submodules/stb/stb_image.h
 CMakeFiles/terrain.dir/terrain/terrain.cpp.o: ../submodules/stb/stb_image_write.h
+CMakeFiles/terrain.dir/terrain/terrain.cpp.o: ../terrain/OpenSimplexNoise.h
 CMakeFiles/terrain.dir/terrain/terrain.cpp.o: ../terrain/dj_algebra.h
 CMakeFiles/terrain.dir/terrain/terrain.cpp.o: ../terrain/glad/glad.h
 CMakeFiles/terrain.dir/terrain/terrain.cpp.o: ../terrain/glad/khrplatform.h

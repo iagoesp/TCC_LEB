@@ -354,6 +354,18 @@ string.h
 string.h
 -
 
+/home/iago/Desktop/UFBA/TCC_LEB/terrain/OpenSimplexNoise.cpp
+OpenSimplexNoise.h
+/home/iago/Desktop/UFBA/TCC_LEB/terrain/OpenSimplexNoise.h
+cmath
+-
+
+/home/iago/Desktop/UFBA/TCC_LEB/terrain/OpenSimplexNoise.h
+cstdint
+-
+array
+-
+
 /home/iago/Desktop/UFBA/TCC_LEB/terrain/dj_algebra.h
 cstring
 -
@@ -443,6 +455,8 @@ grid.h
 /home/iago/Desktop/UFBA/TCC_LEB/terrain/grid.h
 simplex.h
 /home/iago/Desktop/UFBA/TCC_LEB/terrain/simplex.h
+OpenSimplexNoise.h
+/home/iago/Desktop/UFBA/TCC_LEB/terrain/OpenSimplexNoise.h
 cstdio
 -
 cstdlib

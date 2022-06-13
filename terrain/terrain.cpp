@@ -9,6 +9,7 @@
 
 #include "grid.h"
 #include "simplex.h"
+#include "OpenSimplexNoise.h"
 #include <cstdio>
 #include <cstdlib>
 #include <utility>
@@ -1132,11 +1133,6 @@ void LoadNmapTexture16(int smapID, const djg_texture *dmap, std::vector<uint16_t
     int mipcnt = djgt__mipcnt(w, h, 1);
 
     std::vector<float> smap(w * h * 2);
-    int octaves = 8;
-    float gain = 0.08f;
-    float lacunarity = 0.08f;
-    std::ofstream myfile;
-    myfile.open("../nmap_fbm.csv");
 
     for (int j = 0; j < h; ++j){
         for (int i = 0; i < w; ++i) {
@@ -1156,33 +1152,15 @@ void LoadNmapTexture16(int smapID, const djg_texture *dmap, std::vector<uint16_t
             float z_t = (float)px_t / 65535.0f; // in [0, 1]
             float slope_x = (float)w * 0.5f * (z_r - z_l);
             float slope_y = (float)h * 0.5f * (z_t - z_b); 
-            /*
-            glm::vec2 px_l = glm::vec2(i1,j);
-            glm::vec2 px_r = glm::vec2(i2,j);
-            glm::vec2 px_b = glm::vec2(i,j1);
-            glm::vec2 px_t = glm::vec2(i,j2);
 
-            float z_l = Simplex::iqfBm(px_l, octaves, lacunarity, gain)*0.5f;
-            float z_r = Simplex::iqfBm(px_r, octaves, lacunarity, gain)*0.5f;
-            float z_b = Simplex::iqfBm(px_b, octaves, lacunarity, gain)*0.5f;
-            float z_t = Simplex::iqfBm(px_t, octaves, lacunarity, gain)*0.5f;
-            float slope_x = (float)w * 0.5f * (z_r - z_l);
-            float slope_y = (float)h * 0.5f * (z_t - z_b);*/
             smap[    2 * (i + w * j)] = slope_x;
             smap[1 + 2 * (i + w * j)] = slope_y;
+            
             //smap[    2 * (i + w * j)] = normals[    2 * (i + w * j)];//slope_x;
             //smap[1 + 2 * (i + w * j)] = normals[ 1 + 2 * (i + w * j)];//slope_y;
-            if((i + w*j) % 100 == 0){
-                myfile << "\n";
-            }
-            myfile << normals[    2 * (i + w * j)];
-            myfile << ", ";
-            myfile << normals[1+    2 * (i + w * j)];
-            myfile << ", ";
-            myfile << ", ";
+
         }  
     } 
-    myfile.close();
 
     if (glIsTexture(g_gl.textures[smapID]))
         glDeleteTextures(1, &g_gl.textures[smapID]);
@@ -1219,8 +1197,6 @@ void LoadNmapTexture16(int smapID, const djg_texture *dmap)
     int octaves = 8;
     float gain = 0.08f;
     float lacunarity = 0.08f;
-    std::ofstream myfile;
-    myfile.open ("../nmap.csv");
 
     for (int j = 0; j < h; ++j){
         for (int i = 0; i < w; ++i) {
@@ -1239,31 +1215,10 @@ void LoadNmapTexture16(int smapID, const djg_texture *dmap)
             float z_t = (float)px_t / 65535.0f; // in [0, 1]
             float slope_x = (float)w * 0.5f * (z_r - z_l);
             float slope_y = (float)h * 0.5f * (z_t - z_b); 
-            /*
-            glm::vec2 px_l = glm::vec2(i1,j);
-            glm::vec2 px_r = glm::vec2(i2,j);
-            glm::vec2 px_b = glm::vec2(i,j1);
-            glm::vec2 px_t = glm::vec2(i,j2);
-
-            float z_l = Simplex::iqfBm(px_l, octaves, lacunarity, gain)*0.5f;
-            float z_r = Simplex::iqfBm(px_r, octaves, lacunarity, gain)*0.5f;
-            float z_b = Simplex::iqfBm(px_b, octaves, lacunarity, gain)*0.5f;
-            float z_t = Simplex::iqfBm(px_t, octaves, lacunarity, gain)*0.5f;
-            float slope_x = (float)w * 0.5f * (z_r - z_l);
-            float slope_y = (float)h * 0.5f * (z_t - z_b);*/
             smap[    2 * (i + w * j)] = slope_x;
             smap[1 + 2 * (i + w * j)] = slope_y;
-            if((i + w*j) % 100 == 0){
-                myfile << "\n";
-            }
-            myfile << slope_x;
-            myfile << ", ";
-            myfile << slope_y;
-            myfile << ", ";
-            myfile << ", ";
         }  
     } 
-    myfile.close();
 
     if (glIsTexture(g_gl.textures[smapID]))
         glDeleteTextures(1, &g_gl.textures[smapID]);
@@ -1287,17 +1242,17 @@ void LoadNmapTexture16(int smapID, const djg_texture *dmap)
     glActiveTexture(GL_TEXTURE0);
 }
 
-void LoadNmapTexture8(int smapID, const djg_texture *dmap, std::vector<uint16_t> texels, std::vector<float> normals)
+void LoadNmapTexture8(int smapID, const djg_texture *dmap)
 {
     int w = dmap->next->x;
     int h = dmap->next->y;
-    //const uint8_t *texels = (const uint8_t *)dmap->next->texels;
+    const uint8_t *texels = (const uint8_t *)dmap->next->texels;
     int mipcnt = djgt__mipcnt(w, h, 1);
 
     std::vector<float> smap(w * h * 2);
 
     for (int j = 0; j < h; ++j)
-        for (int i = 0; i < w; ++i) {/*
+        for (int i = 0; i < w; ++i) {
             int i1 = std::max(0, i - 1);
             int i2 = std::min(w - 1, i + 1);
             int j1 = std::max(0, j - 1);
@@ -1312,11 +1267,10 @@ void LoadNmapTexture8(int smapID, const djg_texture *dmap, std::vector<uint16_t>
             float z_t = (float)px_t / 255.0f; // in [0, 1]
             float slope_x = (float)w * 0.5f * (z_r - z_l);
             float slope_y = (float)h * 0.5f * (z_t - z_b);
-
+            
             smap[    2 * (i + w * j)] = slope_x;
-            smap[1 + 2 * (i + w * j)] = slope_y;*/
-            smap[    2 * (i + w * j)] = normals[    2 * (i + w * j)];//slope_x;
-            smap[1 + 2 * (i + w * j)] = normals[ 1 + 2 * (i + w * j)];//slope_y;
+            smap[1 + 2 * (i + w * j)] = slope_y;
+            
         }
 
     if (glIsTexture(g_gl.textures[smapID]))
@@ -1384,35 +1338,31 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     // Variaveis inseridas para o projeto
     float max = 0.f;
     float min = 1.f;
-    std::ofstream myfile;
-    std::string title = "dmap_fbm";
     //std::string title = "dmap";
     std::vector<float> zf_arr(w*h);
     std::vector<uint16_t> texels2(w*h);
     std::vector<float> normals(w*h*2);
-    myfile.open ("../" + title + ".csv");
-    glm::mat2 mat = glm::mat2( 1.6, -1.2, 1.2, 1.6);
 
+    glm::mat2 mat = glm::mat2( 1.6, -1.2, 1.2, 1.6);
+    Simplex::seed(8);
     for (int j = 0; j < h; j++){
         for (int i = 0; i < w; i++) {
-            glm::vec2 pos = glm::vec2(i,j);
+            glm::vec2 pos1 = glm::vec2(float(i)/float(w), float(j)/float(h));
+            glm::vec2 pos2 = glm::vec2(i, j);
+            pos2 = glm::sqrt(pos2+10.f)+0.01f;
 
             //Variação do fBm do Inigo Quilez
-            //glm::vec3 z4 = Simplex::dfBm(pos, 8, 2.18387276, 0.521869 );
+            //glm::vec3 z4 = Simplex::dfBm(pos1, 8, 2.18387276, 0.521869 );
             //float zf = z4.x;
-            //float zf = Simplex::fBm(pos, 8, 2.18387276, 0.521869);
-            float zf = 1.0f;//Simplex::iqMatfBm(pos, 4, mat, 0.5f);
-            //LOG("(%f) - ", zf);
-
             //glm::vec2 normal = glm::normalize(glm::vec2(z4.y, z4.z));
             //normals[2 * (i + w*j)] = normal.x;
-            //normals[1 + 2*(i + w*j)] = normal.y; 
-            //LOG("(%d, %d)", normal.x, normal.y);
-            //Ridged Noise;
-            //float zf = ridgedNoise(pos);
+            //normals[1 + 2*(i + w*j)] = normal.y;
+            float zf = 0.0f;
 
-            //Testando outro código fbm;
-            //float zf = fBm( pos, 8, 2.18387276, 0.521869 );
+            //float zf = Simplex::iqMatfBm(pos, 4, mat, 0.5f);
+            //float zf = Simplex::ridgedNoise(pos1)*10;
+            //zf += Simplex::iqfBm(pos2, 1, 0.08f, 0.99f);
+            //glm::vec2 normal = glm::normalize(glm::vec2(pos1.y - pos1.x, zf - pos1.x));
 
             /*
             if(zf < 0){
@@ -1420,9 +1370,10 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
             }
             if(zf > 1){
                 zf = 1;
-            }*/
-            /*
+            }
+            */
             // Condição para normalizar o zf
+            /*
             if(zf < min){
                 min = zf;
             }
@@ -1433,67 +1384,36 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
         }
     }
 
-    /*
+    
     // Se normalizar
+    /*
     for (int j = 0; j < h; ++j){
         for (int i = 0; i < w; ++i) {
             float zf = zf_arr[i + w*j];
             zf = (zf - min)/(max - min);
             zf_arr[i + w*j] = zf;
         }
-    }
-    */
+    }*/
+    
     for (int j = 0; j < h; ++j){
         for (int i = 0; i < w; ++i) {
-            // Implementação original
-            
             /*
+            // Implementação original
             uint16_t z = texels[i + w * j]; // in [0,2^16-1]
             float zf = float(z) / float((1 << 16) - 1);
             uint16_t z2 = zf * zf * ((1 << 16) - 1);
             /**/
-
-            // Nova implementação 
-            // Criando um vec2 para criar ruído por vértice no fBm
-            
-            //glm::vec2 pos = glm::vec2(i,j);
-            //float zf = Simplex::iqMatfBm(pos, 4, mat, 0.5f);
-            //float zf = fBm( pos, 8, 2.18387276, 0.521869 );
-            
-
+  
             float zf = zf_arr[i + w*j];
             uint16_t z = uint16_t(zf * ((1 << 16) - 1));
             uint16_t z2 = zf * zf * ((1 << 16) - 1);
             texels2[i + w * j] = z;
-            
-            
-            // Exportando para o CSV
-            if(i == 0 && j == 0){
-                myfile << "zf";
-                myfile << ", ";
-                myfile << "z";
-                myfile << ", ";
-                myfile << "z2";
-                myfile << "\n";
-            }
-            else if((i + w*j) % 100 == 0){
-                myfile << "\n";
-            }
-
-			myfile << zf;
-            myfile << ", ";
-            myfile << z;
-            myfile << ", ";
-			myfile << z2;
-            myfile << ", ";
-            myfile << ", ";
-            
+                        
             // Implementação original
             dmap[    2 * (i + w * j)] = z;
             dmap[1 + 2 * (i + w * j)] = z2;
         }        
-    }    
-    myfile.close();
+    }
     
     // Load nmap from dmap
     //Método original, descomentar 

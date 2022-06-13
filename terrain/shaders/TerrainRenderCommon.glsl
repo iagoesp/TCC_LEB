@@ -220,13 +220,14 @@ vec2 LevelOfDetail(in const vec4[3] patchVertices)
 #else
         return vec2(0.0f, 1.0f);
 #endif
-
+/*
+alterado
 #   if FLAG_DISPLACE
     // variance test
     if (!DisplacementVarianceTest(patchVertices))
         return vec2(0.0f, 1.0f);
 #endif
-
+*/
     // compute triangle LOD
     return vec2(TriangleLevelOfDetail(patchVertices), 1.0f);
 }
@@ -460,6 +461,12 @@ vec4 dnoise(vec3 v){
 float hash(float n) { return fract(sin(n) * 1e4); }
 float hash(vec2 p) { return fract(1e4 * sin(17.0 * p.x + p.y * 0.1) * (0.1 + abs(sin(p.y * 13.0 + p.x)))); }
 
+float hash(vec3 p)  // replace this by something better
+{
+    p  = 50.0*fract( p*0.3183099 + vec3(0.71,0.113,0.419));
+    return -1.0+2.0*fract( p.x*p.y*p.z*(p.x+p.y+p.z) );
+}
+
 float noise(vec3 x) {
 	const vec3 step = vec3(110, 241, 171);
 
@@ -544,22 +551,7 @@ float noise(vec2 x )
     return -1.0+2.0*(a + (b-a)*u.x + (c-a)*u.y + (a - b - c + d)*u.x*u.y);
 }
 
-float fbm_toy(vec2 x )
-{
-    float f = 1.9;
-    float s = 0.55;
-    float a = 0.0;
-    float b = 0.5;
-    for( int i=0; i<9; i++ )
-    {
-        float n = noise(x);
-        a += b*n;
-        b *= s;
-        x = f*m2*x;
-    }
-    
-	return a;
-}
+
 
 float iqfBm(vec3 v, int octaves, float lacunarity, float gain )
 {
@@ -599,51 +591,8 @@ vec4 dfBm(vec3 v, int octaves, float lacunarity, float gain )
 	return sum;
 }
 
-vec2 terrainMap(vec2 p)
-{
-    float e = fbm_toy(p);
-    float a = 1.0-smoothstep( 0.12, 0.13, abs(e+0.12) ); // flag high-slope areas (-0.25, 0.0)
-    float z = 6.0*e + 6.0;
-    
-    // cliff
-    z += 90.0*smoothstep( 5.52, 5.94, e);
-    return vec2(z,a);
-}
 
-/*******************************************************************************
- * GenerateVertex -- Computes the final vertex position
- *
- */
-struct VertexAttribute {
-    vec4 position;
-    vec2 texCoord;
-};
 
-VertexAttribute TessellateTriangle(
-    in const vec2 texCoords[3],
-    in vec2 tessCoord
-) {
-    vec2 texCoord = BarycentricInterpolation(texCoords, tessCoord);
-    #if 1
-    vec3 position3 = vec3(texCoord.x, 0, texCoord.y);
-    #else
-    vec3 position3 = vec3(texCoord, 0);
-    #endif
-    vec4 position = vec4(texCoord, 0, 1);
-
-    #if 1
-    position.z = u_DmapFactor * textureLod(u_DmapSampler, texCoord, 0.0).r;
-
-    #elif 0
-        position.z = u_DmapFactor * textureLod(u_DmapSampler, texCoord, 0.0).r;
-        position.z += fbmA3(position.xyz, 8, 1.15f, 0.95f)-2;
-    
-    #else
-        position.z = terrainMap(texCoord).x - 3;
-    #endif
-    position.z *= u_DmapFactor;
-    return VertexAttribute(position, texCoord);
-}
 
 vec2 smoothstepd( float a, float b, float x)
 {
@@ -704,21 +653,156 @@ vec3 fbmd_9( in vec2 x )
 	return vec3( a, d );
 }
 
-vec4 terrainMapD(vec2 p )
+vec4 noised4(vec3 x ){
+
+    vec3 i = floor(x);
+    vec3 w = fract(x);
+    
+#if 1
+    // quintic interpolation
+    vec3 u = w*w*w*(w*(w*6.0-15.0)+10.0);
+    vec3 du = 30.0*w*w*(w*(w-2.0)+1.0);
+#else
+    // cubic interpolation
+    vec3 u = w*w*(3.0-2.0*w);
+    vec3 du = 6.0*w*(1.0-w);
+#endif    
+    
+    
+    float a = hash(i+vec3(0.0,0.0,0.0));
+    float b = hash(i+vec3(1.0,0.0,0.0));
+    float c = hash(i+vec3(0.0,1.0,0.0));
+    float d = hash(i+vec3(1.0,1.0,0.0));
+    float e = hash(i+vec3(0.0,0.0,1.0));
+	float f = hash(i+vec3(1.0,0.0,1.0));
+    float g = hash(i+vec3(0.0,1.0,1.0));
+    float h = hash(i+vec3(1.0,1.0,1.0));
+	
+    float k0 =   a;
+    float k1 =   b - a;
+    float k2 =   c - a;
+    float k3 =   e - a;
+    float k4 =   a - b - c + d;
+    float k5 =   a - c - e + g;
+    float k6 =   a - b - e + f;
+    float k7 = - a + b + c - d + e - f - g + h;
+
+    return vec4( k0 + k1*u.x + k2*u.y + k3*u.z + k4*u.x*u.y + k5*u.y*u.z + k6*u.z*u.x + k7*u.x*u.y*u.z, 
+                 du * vec3( k1 + k4*u.y + k6*u.z + k7*u.y*u.z,
+                            k2 + k5*u.z + k4*u.x + k7*u.z*u.x,
+                            k3 + k6*u.x + k5*u.y + k7*u.x*u.y ) );
+}
+
+vec4 fbmInigo(vec3 x, int octaves, float g)
 {
-    vec3 e = fbmd_9( p);
-    vec3 z = vec3(0, 0, 0);
-    z.x  = 6.0*e.x + 6.0;
-    z.yz = 6.0*e.yz;
+    // float f = 2.01;  // could be 2.0
+    // float s = 0.51;  // could be 0.5
+    float f = 1.98;  // could be 2.0
+    float s = 0.49;  // could be 0.5
+    float a = 0.0;
+    float b = 0.5;
+    //float g = 2.0;
+    vec3  d = vec3(0.0);
+    mat3  m = mat3(1.0,0.0,0.0,
+    0.0,1.0,0.0,
+    0.0,0.0,1.0);
+    for( int i=0; i < octaves; i++ )
+    {
+        vec4 n = noised4(x);
+        a += b*n.x;          // accumulate values
+        d += b*m*n.yzw;      // accumulate derivatives
+        //b *= s;
+        b *= s*g;
+        x = f*m3*x;
+        m = f*m3i*m;
+    }
+    return vec4( a, d );
+}
+
+vec4 normal_toy(vec2 p )
+{
+    vec3 e = fbmd_9( p + vec2(1.0,-2.0));
+    //vec3 z = vec3(0, 0, 0);
+    e.x  = 600.0*e.x + 600.0;
+    e.yz = 600.0*e.yz;
 
     // cliff
-    vec2 c = smoothstepd( 5.50, 6.00, e.x );
-	z.x  = e.x  + 90.0*c.x;
-	z.yz = e.yz + 90.0*c.y*e.yz;     // chain rule
+    vec2 c = smoothstepd( 550.0, 600.0, e.x );
+	e.x  = e.x  + 90.0*c.x;
+	e.yz = e.yz + 90.0*c.y*e.yz;     // chain rule
     
-    //e.yz /= 2000.0;
-    return vec4( z.x, normalize( vec3(-z.y,1.0,-z.z) ) );
+    e.yz /= 2000.0;
+    return vec4( e.x, normalize( vec3(-e.y,1.0,-e.z) ) );
 }
+
+float fbm_toy(vec2 x )
+{
+    float f = 1.9;
+    float s = 0.55;
+    float a = 0.0;
+    float b = 0.5;
+    for( int i=0; i<9; i++ )
+    {
+        float n = noise(x);
+        a += b*n;
+        b *= s;
+        x = f*m2*x;
+    }
+    
+	return a;
+}
+
+vec2 terrainMap(vec2 p)
+{
+    float e = fbm_toy(p/200 + vec2(1.0,-2.0));
+    float a = 1.0-smoothstep( 0.12, 0.13, abs(e+0.12) ); // flag high-slope areas (-0.25, 0.0)
+    // float z = 6.0*e + 6.0;
+    e = 60.0*e + 60.0;
+    
+    // cliff
+    e += 90.0*smoothstep( 55.20, 59.40, e);
+    return vec2(e,a);
+}
+
+/*******************************************************************************
+ * GenerateVertex -- Computes the final vertex position
+ *
+ */
+struct VertexAttribute {
+    vec4 position;
+    vec2 texCoord;
+    vec3 normal;
+};
+
+VertexAttribute TessellateTriangle(
+    in const vec2 texCoords[3],
+    in vec2 tessCoord
+) {
+    vec2 texCoord = BarycentricInterpolation(texCoords, tessCoord);
+    vec4 position = vec4(texCoord, 0, 1);
+
+    vec3 normal = vec3(1,1,1);
+    #if 0
+    position.z = u_DmapFactor * textureLod(u_DmapSampler, texCoord, 0.0).r;
+
+    #elif 0
+        vec4 z4 = dfBm(position.xyz, 2, 0.69, 0.70);
+        normal = normalize(z4.yzw);
+        position.z = z4.x;
+        
+    
+    #else
+        vec4 fbm = fbmInigo(position.xyz, 6, 2.01);
+        position.z = fbm.x;
+        // fbm = fbmInigo(position.xyz, 8, 1.01);
+        // position.z = fbm.x;
+
+        normal = normalize(fbm.yzw);
+    #endif
+    return VertexAttribute(position, texCoord, normal);
+}
+
+
 
 /*******************************************************************************
  * ShadeFragment -- Fragement shading routine
@@ -726,9 +810,9 @@ vec4 terrainMapD(vec2 p )
  */
 #ifdef FRAGMENT_SHADER
 #if FLAG_WIRE
-vec4 ShadeFragment(vec2 texCoord, vec3 worldPos, vec3 distance)
+vec4 ShadeFragment(vec2 texCoord, vec3 worldPos, vec3 distance, vec3 normal)
 #else
-vec4 ShadeFragment(vec2 texCoord, vec3 worldPos)
+vec4 ShadeFragment(vec2 texCoord, vec3 worldPos, vec3 normal)
 #endif
 {
 #if FLAG_WIRE
@@ -744,6 +828,8 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos)
     // slope
     vec2 smap = texture(u_SmapSampler, texCoord).rg * u_DmapFactor * 0.03;
     vec3 n = normalize(vec3(-smap, 1));
+    //alterado
+    n = normal;
 #elif 0
     vec2 e = vec2(0.03,0.0);
     vec3 n = terrainMapD(texCoord).yzw;;
@@ -768,6 +854,7 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos)
     float slopeMag = dot(n.xy, n.xy);
     vec3 albedo = slopeMag > 0.5 ? vec3(0.75) : vec3(2);
     float z = 3.0 * gl_FragCoord.z / gl_FragCoord.w;
+    return vec4(mix(vec3(albedo * d / 3.14159), vec3(0.5), 1.0 - exp2(-z)), 1);
 
     return vec4(mix(vec3(albedo * d / 3.14159), vec3(0.5), 1.0 - exp2(-z)), 1);
 #elif SHADING_DIFFUSE
@@ -786,7 +873,9 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos)
     vec3 shading = (d / 3.14159) * albedo;
 #endif
 
-    return vec4(shading * extinction + inscatter * 0.5, 1);
+    //alterado
+    // return vec4(shading * extinction + inscatter * 0.5, 1);
+    return vec4(shading * extinction, 1);
 #elif SHADING_NORMALS
 
     return vec4(abs(n), 1);

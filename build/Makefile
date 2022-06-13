@@ -409,6 +409,33 @@ submodules/imgui/imgui_widgets.cpp.s:
 	$(MAKE) -f CMakeFiles/subdivision.dir/build.make CMakeFiles/subdivision.dir/submodules/imgui/imgui_widgets.cpp.s
 .PHONY : submodules/imgui/imgui_widgets.cpp.s
 
+terrain/OpenSimplexNoise.o: terrain/OpenSimplexNoise.cpp.o
+
+.PHONY : terrain/OpenSimplexNoise.o
+
+# target to build an object file
+terrain/OpenSimplexNoise.cpp.o:
+	$(MAKE) -f CMakeFiles/terrain.dir/build.make CMakeFiles/terrain.dir/terrain/OpenSimplexNoise.cpp.o
+.PHONY : terrain/OpenSimplexNoise.cpp.o
+
+terrain/OpenSimplexNoise.i: terrain/OpenSimplexNoise.cpp.i
+
+.PHONY : terrain/OpenSimplexNoise.i
+
+# target to preprocess a source file
+terrain/OpenSimplexNoise.cpp.i:
+	$(MAKE) -f CMakeFiles/terrain.dir/build.make CMakeFiles/terrain.dir/terrain/OpenSimplexNoise.cpp.i
+.PHONY : terrain/OpenSimplexNoise.cpp.i
+
+terrain/OpenSimplexNoise.s: terrain/OpenSimplexNoise.cpp.s
+
+.PHONY : terrain/OpenSimplexNoise.s
+
+# target to generate assembly for a file
+terrain/OpenSimplexNoise.cpp.s:
+	$(MAKE) -f CMakeFiles/terrain.dir/build.make CMakeFiles/terrain.dir/terrain/OpenSimplexNoise.cpp.s
+.PHONY : terrain/OpenSimplexNoise.cpp.s
+
 terrain/glad/glad.o: terrain/glad/glad.c.o
 
 .PHONY : terrain/glad/glad.o
@@ -527,6 +554,9 @@ help:
 	@echo "... submodules/imgui/imgui_widgets.o"
 	@echo "... submodules/imgui/imgui_widgets.i"
 	@echo "... submodules/imgui/imgui_widgets.s"
+	@echo "... terrain/OpenSimplexNoise.o"
+	@echo "... terrain/OpenSimplexNoise.i"
+	@echo "... terrain/OpenSimplexNoise.s"
 	@echo "... terrain/glad/glad.o"
 	@echo "... terrain/glad/glad.i"
 	@echo "... terrain/glad/glad.s"

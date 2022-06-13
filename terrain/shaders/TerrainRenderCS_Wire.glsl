@@ -16,6 +16,8 @@ by Jonathan Dupuy
 layout(location = 0) in vec2 i_VertexPos;
 layout(location = 0) out vec2 o_TexCoord;
 layout(location = 1) out vec3 o_WorldPos;
+layout(location = 2) out vec3 o_Normal;
+
 
 void main()
 {
@@ -46,6 +48,8 @@ void main()
 #endif
     o_TexCoord  = attrib.texCoord;
     o_WorldPos  = (u_ModelMatrix * attrib.position).xyz;
+    o_Normal = attrib.normal;
+
 }
 #endif
 
@@ -59,9 +63,13 @@ layout(triangles) in;
 layout(triangle_strip, max_vertices = 3) out;
 layout(location = 0) in vec2 i_TexCoord[];
 layout(location = 1) in vec3 i_WorldPos[];
+layout(location = 2) in vec3 i_Normal[];
+
 layout(location = 0) out vec2 o_TexCoord;
 layout(location = 1) out vec3 o_WorldPos;
 layout(location = 2) noperspective out vec3 o_Distance;
+layout(location = 3) out vec3 o_Normal;
+
 
 uniform vec2 u_ScreenResolution;
 
@@ -76,6 +84,8 @@ void main()
     for (int i = 0; i < 3; ++i) {
         o_TexCoord = i_TexCoord[i];
         o_WorldPos = i_WorldPos[i];
+        o_Normal = i_Normal[i];
+
         o_Distance = vec3(0);
         o_Distance[i] = area * inversesqrt(dot(v[i],v[i]));
         gl_Position = gl_in[i].gl_Position;
@@ -94,10 +104,12 @@ void main()
 layout(location = 0) in vec2 i_TexCoord;
 layout(location = 1) in vec3 i_WorldPos;
 layout(location = 2) noperspective in vec3 i_Distance;
+layout(location = 3) in vec3 i_Normal;
+
 layout(location = 0) out vec4 o_FragColor;
 
 void main()
 {
-    o_FragColor = ShadeFragment(i_TexCoord, i_WorldPos, i_Distance);
+    o_FragColor = ShadeFragment(i_TexCoord, i_WorldPos, i_Distance, i_Normal);
 }
 #endif

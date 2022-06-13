@@ -31,6 +31,9 @@ CMakeFiles/terrain.dir/submodules/imgui/imgui_widgets.cpp.o
  /home/iago/Desktop/UFBA/TCC_LEB/submodules/imgui/imgui_internal.h
  /home/iago/Desktop/UFBA/TCC_LEB/submodules/imgui/imgui_widgets.cpp
  /home/iago/Desktop/UFBA/TCC_LEB/submodules/imgui/imstb_textedit.h
+CMakeFiles/terrain.dir/terrain/OpenSimplexNoise.cpp.o
+ /home/iago/Desktop/UFBA/TCC_LEB/terrain/OpenSimplexNoise.cpp
+ /home/iago/Desktop/UFBA/TCC_LEB/terrain/OpenSimplexNoise.h
 CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.o
  ../submodules/glfw/include/GLFW/glfw3.h
  ../submodules/glfw/include/GLFW/glfw3native.h
@@ -49,6 +52,7 @@ CMakeFiles/terrain.dir/terrain/terrain.cpp.o
  ../submodules/libleb/leb.h
  ../submodules/stb/stb_image.h
  ../submodules/stb/stb_image_write.h
+ /home/iago/Desktop/UFBA/TCC_LEB/terrain/OpenSimplexNoise.h
  /home/iago/Desktop/UFBA/TCC_LEB/terrain/dj_algebra.h
  /home/iago/Desktop/UFBA/TCC_LEB/terrain/glad/glad.h
  /home/iago/Desktop/UFBA/TCC_LEB/terrain/glad/khrplatform.h
