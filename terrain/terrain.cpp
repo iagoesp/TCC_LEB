@@ -1302,7 +1302,7 @@ void LoadNmapTexture8(int smapID, const djg_texture *dmap)
  * This Loads an R16 texture used as a displacement map
  */
 
-float fBm(const glm::vec2 pos, const int octaveCount, float lacunarity, float gain )
+float fBm(const glm::vec2 pos, const int octaveCount = 8, float lacunarity = 2.0f, float gain = 1.0f )
 {
 	float noiseSum     = 0.0;
 	float amplitude    = 1.0;
@@ -1322,6 +1322,63 @@ float fBm(const glm::vec2 pos, const int octaveCount, float lacunarity, float ga
 	return (noiseSum / amplitudeSum);
 }
 
+glm::mat2 mat = glm::mat2( 1.6, -1.2, 1.2, 1.6);
+glm::mat2 m2 = glm::mat2( 1.6, -1.2, 1.2, 1.6);
+
+float terrain( glm::vec2 p, int j ) {
+    p *= 0.0013;
+    float s = 1.0;
+    float t = 0.0;
+    for ( int i=0; i<j; i++ ) {
+        t += 0.5*(cos(6.2831*p.x) + sin(6.2831*p.y))*s;
+        s *= 0.5 + 0.1*t;
+        p = 0.97f*m2*p + (t-0.5f)*0.2f;
+    }
+    return t*55.0;
+}
+
+float hash(glm::vec2 x) {
+    glm::vec2 integer = glm::floor(x);
+    glm::vec2 fractional = glm::fract(x);
+
+    glm::vec2 u = 3.f * fractional * fractional - 2.f * fractional * fractional * fractional;
+
+    glm::vec2 ua = 50.0f * fract(x / 3.1415f);
+    return 2.0f * glm::fract(ua.x * ua.y * (ua.x + ua.y)) - 1.0f;
+}
+
+float valuenoise(glm::vec2 x) {
+    glm::vec2 integer = glm::floor(x);
+    glm::vec2 fractional = glm::fract(x);
+
+    glm::vec2 u = fractional * fractional * (3.0f - 2.0f * fractional);
+
+    float a = hash(integer + glm::vec2(0, 0));
+    float b = hash(integer + glm::vec2(1, 0));
+    float c = hash(integer + glm::vec2(0, 1));
+    float d = hash(integer + glm::vec2(1, 1));
+
+    float k0 = a;
+    float k1 = b - a;
+    float k2 = c - a;
+    float k4 = a - b - c + d;
+
+    return 0.0 + 1.0 * (k0 + k1 * u.x + k2 * u.y + k4 * u.x * u.y);
+}
+
+float fbm3(glm::vec2 x, float H, int octaves) {
+    float G = exp2(-H);
+    float f = 1.0;
+    float a = 0.5;
+    float t = 0.0;
+    for (int i = 0; i < octaves; i++) {
+        t += a * valuenoise(f * x);
+        f *= 1.9;
+        a *= G;
+    }
+    return t;
+}
+
 bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
 {
     djg_texture *djgt = djgt_create(1);
@@ -1329,96 +1386,73 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     LOG("Loading {Dmap-Texture}\n");
     djgt_push_image_u16(djgt, pathToFile, 1);
 
-    int w = djgt->next->x;
-    int h = djgt->next->y;
-    const uint16_t *texels = (const uint16_t *)djgt->next->texels;
+    int h = 40;
+    int w = 40;
     int mipcnt = djgt__mipcnt(w, h, 1);
     std::vector<uint16_t> dmap(w * h * 2);
 
-    // Variaveis inseridas para o projeto
-    float max = 0.f;
-    float min = 1.f;
-    //std::string title = "dmap";
-    std::vector<float> zf_arr(w*h);
     std::vector<uint16_t> texels2(w*h);
     std::vector<float> normals(w*h*2);
 
-    glm::mat2 mat = glm::mat2( 1.6, -1.2, 1.2, 1.6);
-    Simplex::seed(8);
-    for (int j = 0; j < h; j++){
-        for (int i = 0; i < w; i++) {
-            glm::vec2 pos1 = glm::vec2(float(i)/float(w), float(j)/float(h));
-            glm::vec2 pos2 = glm::vec2(i, j);
-            pos2 = glm::sqrt(pos2+10.f)+0.01f;
-
-            //Variação do fBm do Inigo Quilez
-            //glm::vec3 z4 = Simplex::dfBm(pos1, 8, 2.18387276, 0.521869 );
-            //float zf = z4.x;
-            //glm::vec2 normal = glm::normalize(glm::vec2(z4.y, z4.z));
-            //normals[2 * (i + w*j)] = normal.x;
-            //normals[1 + 2*(i + w*j)] = normal.y;
-            float zf = 0.0f;
-
-            //float zf = Simplex::iqMatfBm(pos, 4, mat, 0.5f);
-            //float zf = Simplex::ridgedNoise(pos1)*10;
-            //zf += Simplex::iqfBm(pos2, 1, 0.08f, 0.99f);
-            //glm::vec2 normal = glm::normalize(glm::vec2(pos1.y - pos1.x, zf - pos1.x));
-
-            /*
-            if(zf < 0){
-                zf = 0;
-            }
-            if(zf > 1){
-                zf = 1;
-            }
-            */
-            // Condição para normalizar o zf
-            /*
-            if(zf < min){
-                min = zf;
-            }
-            if(zf > max){
-                max = zf;
-            }*/
-            zf_arr[i + w*j] = zf;
-        }
-    }
-
+    float scale = 1.f; // Escala do FBM
     
-    // Se normalizar
-    /*
-    for (int j = 0; j < h; ++j){
-        for (int i = 0; i < w; ++i) {
-            float zf = zf_arr[i + w*j];
-            zf = (zf - min)/(max - min);
-            zf_arr[i + w*j] = zf;
-        }
-    }*/
+    Simplex::seed(45848);
+    for (int j = 0; j < h; j++)
     
-    for (int j = 0; j < h; ++j){
-        for (int i = 0; i < w; ++i) {
-            /*
-            // Implementação original
-            uint16_t z = texels[i + w * j]; // in [0,2^16-1]
-            float zf = float(z) / float((1 << 16) - 1);
-            uint16_t z2 = zf * zf * ((1 << 16) - 1);
-            /**/
-  
-            float zf = zf_arr[i + w*j];
-            uint16_t z = uint16_t(zf * ((1 << 16) - 1));
-            uint16_t z2 = zf * zf * ((1 << 16) - 1);
-            texels2[i + w * j] = z;
-                        
-            // Implementação original
-            dmap[    2 * (i + w * j)] = z;
-            dmap[1 + 2 * (i + w * j)] = z2;
-        }        
-    }
+    for (int i = 0; i < w; i++) {
+        glm::vec2 pos = glm::vec2(float(i)/float(w), float(j)/float(h));
+        glm::vec2 pos1 = glm::vec2(float(i), float(j));
+        glm::vec2 pos2 = glm::vec2(i, j);
+        pos2 = glm::sqrt(pos2+10.f)+0.01f;
+        float zf = 0.f;
+
+        //Variação do fBm do Inigo Quilez
+        //glm::vec3 z4 = Simplex::dfBm(pos1, 8, 2.18387276, 0.521869 );
+        //float zf = z4.x;
+        //glm::vec2 normal = glm::normalize(glm::vec2(z4.y, z4.z));
+        //normals[2 * (i + w*j)] = normal.x;
+        //normals[1 + 2*(i + w*j)] = normal.y;
+        //float zf = 1.0f;
+
+        //float zf = Simplex::iqMatfBm(pos, 8, mat, 1.0f);
+        //float zf = Simplex::iqMatfBm(pos, 8, mat, 1.0f);
+        float x = i * scale;
+        float y = j * scale;
+        pos = glm::vec2(x,y);
+        
+        zf = Simplex::ridgedMF(pos);
+        pos = glm::vec3(x,zf,y);
+        zf += Simplex::iqfBm(pos);
+        glm::vec3 pos3 = glm::vec3(x,zf,y);
+
+        glm::vec4 vector4 = Simplex::dfBm(pos3, 4, 2.f, 1.01f);
+        zf = vector4.x;
+        glm::vec3 normalZF = glm::vec3(vector4.y,vector4.z,vector4.w);
+        
+        //zf += Simplex::fBm(pos, 4, 8, 10.01f)*100.f;
+        //zf *= fbm3(pos, 1.1, 16);//, 3.01f)*10;
+        //zf = fbm3(pos, 8.1, 32);//, 3.01f)*10;
+        
+        //zf += Simplex::dfBm(glm::vec3(pos.x, zf, pos.y), 16, 2.f, 1.5f).x;
+        //zf = Simplex::iqMatfBm(pos, 8, mat, 1.0f);
+        
+        uint16_t z = static_cast<uint16_t>(zf * ((1 << 16) - 1));
+        uint16_t z2 = static_cast<uint16_t>(zf * zf * ((1 << 16) - 1));
+        if(i == 0){
+            LOG("z: %i, and zf: %i\n", z, zf);
+        }
+        texels2[i + w * j] = z;
+                    
+        // Implementação original
+        dmap[    2 * (i + w * j)] = z;
+        dmap[1 + 2 * (i + w * j)] = z2;
+    }        
+    
     
     // Load nmap from dmap
     //Método original, descomentar 
     //LoadNmapTexture16(smapID, djgt);
-    LoadNmapTexture16(smapID, djgt, texels2, normals);
+    LoadNmapTexture16(smapID, djgt);//, texels2, normals);
 
     glActiveTexture(GL_TEXTURE0 + dmapID);
     if (glIsTexture(g_gl.textures[dmapID]))

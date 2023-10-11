@@ -1,42 +1,33 @@
+
+# Consider dependencies only in project.
+set(CMAKE_DEPENDS_IN_PROJECT_ONLY OFF)
+
 # The set of languages for which implicit dependencies are needed:
 set(CMAKE_DEPENDS_LANGUAGES
-  "C"
-  )
-# The set of files for implicit dependencies of each language:
-set(CMAKE_DEPENDS_CHECK_C
-  "/home/iago/Desktop/UFBA/TCC_LEB/submodules/glfw/src/context.c" "/home/iago/Desktop/UFBA/TCC_LEB/build/submodules/glfw/src/CMakeFiles/glfw.dir/context.c.o"
-  "/home/iago/Desktop/UFBA/TCC_LEB/submodules/glfw/src/egl_context.c" "/home/iago/Desktop/UFBA/TCC_LEB/build/submodules/glfw/src/CMakeFiles/glfw.dir/egl_context.c.o"
-  "/home/iago/Desktop/UFBA/TCC_LEB/submodules/glfw/src/glx_context.c" "/home/iago/Desktop/UFBA/TCC_LEB/build/submodules/glfw/src/CMakeFiles/glfw.dir/glx_context.c.o"
-  "/home/iago/Desktop/UFBA/TCC_LEB/submodules/glfw/src/init.c" "/home/iago/Desktop/UFBA/TCC_LEB/build/submodules/glfw/src/CMakeFiles/glfw.dir/init.c.o"
-  "/home/iago/Desktop/UFBA/TCC_LEB/submodules/glfw/src/input.c" "/home/iago/Desktop/UFBA/TCC_LEB/build/submodules/glfw/src/CMakeFiles/glfw.dir/input.c.o"
-  "/home/iago/Desktop/UFBA/TCC_LEB/submodules/glfw/src/linux_joystick.c" "/home/iago/Desktop/UFBA/TCC_LEB/build/submodules/glfw/src/CMakeFiles/glfw.dir/linux_joystick.c.o"
-  "/home/iago/Desktop/UFBA/TCC_LEB/submodules/glfw/src/monitor.c" "/home/iago/Desktop/UFBA/TCC_LEB/build/submodules/glfw/src/CMakeFiles/glfw.dir/monitor.c.o"
-  "/home/iago/Desktop/UFBA/TCC_LEB/submodules/glfw/src/osmesa_context.c" "/home/iago/Desktop/UFBA/TCC_LEB/build/submodules/glfw/src/CMakeFiles/glfw.dir/osmesa_context.c.o"
-  "/home/iago/Desktop/UFBA/TCC_LEB/submodules/glfw/src/posix_thread.c" "/home/iago/Desktop/UFBA/TCC_LEB/build/submodules/glfw/src/CMakeFiles/glfw.dir/posix_thread.c.o"
-  "/home/iago/Desktop/UFBA/TCC_LEB/submodules/glfw/src/posix_time.c" "/home/iago/Desktop/UFBA/TCC_LEB/build/submodules/glfw/src/CMakeFiles/glfw.dir/posix_time.c.o"
-  "/home/iago/Desktop/UFBA/TCC_LEB/submodules/glfw/src/vulkan.c" "/home/iago/Desktop/UFBA/TCC_LEB/build/submodules/glfw/src/CMakeFiles/glfw.dir/vulkan.c.o"
-  "/home/iago/Desktop/UFBA/TCC_LEB/submodules/glfw/src/window.c" "/home/iago/Desktop/UFBA/TCC_LEB/build/submodules/glfw/src/CMakeFiles/glfw.dir/window.c.o"
-  "/home/iago/Desktop/UFBA/TCC_LEB/submodules/glfw/src/x11_init.c" "/home/iago/Desktop/UFBA/TCC_LEB/build/submodules/glfw/src/CMakeFiles/glfw.dir/x11_init.c.o"
-  "/home/iago/Desktop/UFBA/TCC_LEB/submodules/glfw/src/x11_monitor.c" "/home/iago/Desktop/UFBA/TCC_LEB/build/submodules/glfw/src/CMakeFiles/glfw.dir/x11_monitor.c.o"
-  "/home/iago/Desktop/UFBA/TCC_LEB/submodules/glfw/src/x11_window.c" "/home/iago/Desktop/UFBA/TCC_LEB/build/submodules/glfw/src/CMakeFiles/glfw.dir/x11_window.c.o"
-  "/home/iago/Desktop/UFBA/TCC_LEB/submodules/glfw/src/xkb_unicode.c" "/home/iago/Desktop/UFBA/TCC_LEB/build/submodules/glfw/src/CMakeFiles/glfw.dir/xkb_unicode.c.o"
-  )
-set(CMAKE_C_COMPILER_ID "GNU")
-
-# Preprocessor definitions for this target.
-set(CMAKE_TARGET_DEFINITIONS_C
-  "_GLFW_USE_CONFIG_H"
   )
 
-# The include file search paths:
-set(CMAKE_C_TARGET_INCLUDE_PATH
-  "../submodules/glfw/include"
-  "../submodules/glfw/src"
-  "submodules/glfw/src"
+# The set of dependency files which are needed:
+set(CMAKE_DEPENDS_DEPENDENCY_FILES
+  "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/context.c" "submodules/glfw/src/CMakeFiles/glfw.dir/context.c.o" "gcc" "submodules/glfw/src/CMakeFiles/glfw.dir/context.c.o.d"
+  "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/egl_context.c" "submodules/glfw/src/CMakeFiles/glfw.dir/egl_context.c.o" "gcc" "submodules/glfw/src/CMakeFiles/glfw.dir/egl_context.c.o.d"
+  "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/glx_context.c" "submodules/glfw/src/CMakeFiles/glfw.dir/glx_context.c.o" "gcc" "submodules/glfw/src/CMakeFiles/glfw.dir/glx_context.c.o.d"
+  "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/init.c" "submodules/glfw/src/CMakeFiles/glfw.dir/init.c.o" "gcc" "submodules/glfw/src/CMakeFiles/glfw.dir/init.c.o.d"
+  "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/input.c" "submodules/glfw/src/CMakeFiles/glfw.dir/input.c.o" "gcc" "submodules/glfw/src/CMakeFiles/glfw.dir/input.c.o.d"
+  "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/linux_joystick.c" "submodules/glfw/src/CMakeFiles/glfw.dir/linux_joystick.c.o" "gcc" "submodules/glfw/src/CMakeFiles/glfw.dir/linux_joystick.c.o.d"
+  "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/monitor.c" "submodules/glfw/src/CMakeFiles/glfw.dir/monitor.c.o" "gcc" "submodules/glfw/src/CMakeFiles/glfw.dir/monitor.c.o.d"
+  "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/osmesa_context.c" "submodules/glfw/src/CMakeFiles/glfw.dir/osmesa_context.c.o" "gcc" "submodules/glfw/src/CMakeFiles/glfw.dir/osmesa_context.c.o.d"
+  "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/posix_thread.c" "submodules/glfw/src/CMakeFiles/glfw.dir/posix_thread.c.o" "gcc" "submodules/glfw/src/CMakeFiles/glfw.dir/posix_thread.c.o.d"
+  "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/posix_time.c" "submodules/glfw/src/CMakeFiles/glfw.dir/posix_time.c.o" "gcc" "submodules/glfw/src/CMakeFiles/glfw.dir/posix_time.c.o.d"
+  "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/vulkan.c" "submodules/glfw/src/CMakeFiles/glfw.dir/vulkan.c.o" "gcc" "submodules/glfw/src/CMakeFiles/glfw.dir/vulkan.c.o.d"
+  "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/window.c" "submodules/glfw/src/CMakeFiles/glfw.dir/window.c.o" "gcc" "submodules/glfw/src/CMakeFiles/glfw.dir/window.c.o.d"
+  "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/x11_init.c" "submodules/glfw/src/CMakeFiles/glfw.dir/x11_init.c.o" "gcc" "submodules/glfw/src/CMakeFiles/glfw.dir/x11_init.c.o.d"
+  "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/x11_monitor.c" "submodules/glfw/src/CMakeFiles/glfw.dir/x11_monitor.c.o" "gcc" "submodules/glfw/src/CMakeFiles/glfw.dir/x11_monitor.c.o.d"
+  "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/x11_window.c" "submodules/glfw/src/CMakeFiles/glfw.dir/x11_window.c.o" "gcc" "submodules/glfw/src/CMakeFiles/glfw.dir/x11_window.c.o.d"
+  "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/xkb_unicode.c" "submodules/glfw/src/CMakeFiles/glfw.dir/xkb_unicode.c.o" "gcc" "submodules/glfw/src/CMakeFiles/glfw.dir/xkb_unicode.c.o.d"
   )
 
-# Targets to which this target links.
-set(CMAKE_TARGET_LINKED_INFO_FILES
+# Targets to which this target links which contain Fortran sources.
+set(CMAKE_Fortran_TARGET_LINKED_INFO_FILES
   )
 
 # Fortran module output directory.

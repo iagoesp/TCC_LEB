@@ -782,11 +782,12 @@ VertexAttribute TessellateTriangle(
     vec4 position = vec4(texCoord, 0, 1);
 
     vec3 normal = vec3(1,1,1);
-    #if 0
+    #if 1
     position.z = u_DmapFactor * textureLod(u_DmapSampler, texCoord, 0.0).r;
 
-    #elif 0
-        vec4 z4 = dfBm(position.xyz, 2, 0.69, 0.70);
+    #elif 1
+        //vec4 z4 = dfBm(position.xyz, 2, 0.69, 0.70);
+        vec4 z4 = fbmInigo(position.xyz, 64, 1.21);
         normal = normalize(z4.yzw);
         position.z = z4.x;
         
@@ -824,7 +825,7 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos, vec3 normal)
 #endif
 
 #if FLAG_DISPLACE
-#if 1
+#if 0
     // slope
     vec2 smap = texture(u_SmapSampler, texCoord).rg * u_DmapFactor * 0.03;
     vec3 n = normalize(vec3(-smap, 1));
