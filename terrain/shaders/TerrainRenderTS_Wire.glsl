@@ -25,10 +25,17 @@ void main()
  */
 #ifdef TESS_CONTROL_SHADER
 layout (vertices = 1) out;
+
 out PatchData {
     vec4 packedData[4];
 } o_Patch[];
 
+
+float LOD(vec3 posV){
+    vec3 cam = vec3(inverse(u_ViewProjectionMatrix)[3]);
+    float dist = distance(posV, cam);
+    return int(log2(dist));  
+}
 
 void main()
 {
@@ -76,10 +83,12 @@ void main()
         );
 
         // set tess levels
-        gl_TessLevelInner[0] =
-        gl_TessLevelOuter[0] =
+        gl_TessLevelInner[0] = 
+        gl_TessLevelOuter[0] = 
         gl_TessLevelOuter[1] =
         gl_TessLevelOuter[2] = TERRAIN_PATCH_TESS_FACTOR;
+        //gl_TessLevelOuter[2] = LOD(triangleVertices[0].xyz);
+        
     } else {
         gl_TessLevelInner[0] =
         gl_TessLevelInner[1] =

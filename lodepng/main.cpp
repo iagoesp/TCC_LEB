@@ -33,7 +33,7 @@ void write_png(const string path, const uint width, const uint height) {
 }
 
 int main(){
-    string path = "/home/iago/Desktop/UFBA/LongestEdgeBisection2D/assets/test.png";
+    string path = "/run/media/terminus/HDD/TCC_LEB/test.png";
     uint width = 3601;
     uint height = 3601;
     write_png(path, width, height);

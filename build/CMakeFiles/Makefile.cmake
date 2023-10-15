@@ -8,9 +8,9 @@ set(CMAKE_DEPENDS_GENERATOR "Unix Makefiles")
 set(CMAKE_MAKEFILE_DEPENDS
   "CMakeCache.txt"
   "/run/media/terminus/HDD/TCC_LEB/CMakeLists.txt"
-  "CMakeFiles/3.27.5/CMakeCCompiler.cmake"
-  "CMakeFiles/3.27.5/CMakeCXXCompiler.cmake"
-  "CMakeFiles/3.27.5/CMakeSystem.cmake"
+  "CMakeFiles/3.27.7/CMakeCCompiler.cmake"
+  "CMakeFiles/3.27.7/CMakeCXXCompiler.cmake"
+  "CMakeFiles/3.27.7/CMakeSystem.cmake"
   "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/CMake/cmake_uninstall.cmake.in"
   "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/CMake/glfw3.pc.in"
   "/run/media/terminus/HDD/TCC_LEB/submodules/glfw/CMake/glfw3Config.cmake.in"
@@ -139,11 +139,11 @@ set(CMAKE_MAKEFILE_OUTPUTS
 
 # Byproducts of CMake generate step:
 set(CMAKE_MAKEFILE_PRODUCTS
-  "CMakeFiles/3.27.5/CMakeSystem.cmake"
-  "CMakeFiles/3.27.5/CMakeCCompiler.cmake"
-  "CMakeFiles/3.27.5/CMakeCXXCompiler.cmake"
-  "CMakeFiles/3.27.5/CMakeCCompiler.cmake"
-  "CMakeFiles/3.27.5/CMakeCXXCompiler.cmake"
+  "CMakeFiles/3.27.7/CMakeSystem.cmake"
+  "CMakeFiles/3.27.7/CMakeCCompiler.cmake"
+  "CMakeFiles/3.27.7/CMakeCXXCompiler.cmake"
+  "CMakeFiles/3.27.7/CMakeCCompiler.cmake"
+  "CMakeFiles/3.27.7/CMakeCXXCompiler.cmake"
   "CMakeFiles/CMakeDirectoryInformation.cmake"
   "submodules/glfw/src/glfw3Config.cmake"
   "submodules/glfw/src/glfw3ConfigVersion.cmake"
