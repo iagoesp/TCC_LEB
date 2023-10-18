@@ -2,7 +2,7 @@ submodules/glfw/src/CMakeFiles/glfw.dir/glx_context.c.o: \
  /run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/glx_context.c \
  /usr/include/stdc-predef.h \
  /run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/internal.h \
- /run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/glfw_config.h \
+ /run/media/terminus/HDD/TCC_LEB/build/submodules/glfw/src/glfw_config.h \
  /run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/../include/GLFW/glfw3.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/stddef.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/stdint.h \

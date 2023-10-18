@@ -11,7 +11,7 @@ submodules/glfw/src/CMakeFiles/glfw.dir/osmesa_context.c.o: \
  /usr/include/bits/stdlib-float.h /usr/include/string.h \
  /usr/include/assert.h \
  /run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/internal.h \
- /run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/glfw_config.h \
+ /run/media/terminus/HDD/TCC_LEB/build/submodules/glfw/src/glfw_config.h \
  /run/media/terminus/HDD/TCC_LEB/submodules/glfw/src/../include/GLFW/glfw3.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/stdint.h \
  /usr/include/stdint.h /usr/include/bits/types.h \

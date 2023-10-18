@@ -127,6 +127,29 @@ void updateCameraMatrix()
     );
 }
 
+enum {
+    MONTANHA,
+    PLANICE,
+    DUNA
+};
+
+bool automatic_octaves = false;
+
+int elevacao = 0;
+int mountain_dunes = MONTANHA;
+
+int size_ter = 1280;
+int amostra_ter = 15;
+int seeds = 1000;
+float wavelength = 1.4f;
+float frequencia_ter = 1.4f;
+float frequencia_fbm_ter = 1.42f;
+
+
+float ridgeOffset = 1.0f;
+int octaves_ter = 4;
+float lacunarity_ter = 2.0f;
+float gain_ter = 0.5f;
 // -----------------------------------------------------------------------------
 // Terrain Manager
 enum { METHOD_CS, METHOD_TS, METHOD_GS, METHOD_MS };
@@ -427,6 +450,7 @@ debug_output_logger(
         default: strcpy(srcstr, "???"); break;
     };
 
+
     switch(type) {
         case GL_DEBUG_TYPE_ERROR: strcpy(typestr, "Error"); break;
         case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: strcpy(typestr, "Deprecated Behavior"); break;
@@ -505,6 +529,7 @@ float computeLodFactor()
 void ConfigureTerrainProgram(GLuint glp, GLuint offset)
 {
     float lodFactor = computeLodFactor();
+
 
     glProgramUniform1f(glp,
         g_gl.uniforms[UNIFORM_TERRAIN_DMAP_FACTOR + offset],
@@ -586,13 +611,15 @@ void ConfigureSkyProgram()
 //
 ////////////////////////////////////////////////////////////////////////////////
 
+
 // -----------------------------------------------------------------------------
 /**
- * Load the Viewer Program
+* Load the Viewer Program
  *
  * This program is responsible for blitting the scene framebuffer to
  * the back framebuffer, while applying gamma correction and tone mapping to
  * the rendering.
+ *
  */
 bool LoadViewerProgram()
 {
@@ -641,10 +668,10 @@ bool LoadViewerProgram()
 }
 
 // -----------------------------------------------------------------------------
-/**
- * Load the Terrain Rendering Program
+/** Load the Terrain Rendering Program
  *
  * This program is responsible for updating and rendering the terrain.
+ *
  */
 bool LoadTerrainProgram(GLuint *glp, const char *flag, GLuint uniformOffset)
 {
@@ -784,9 +811,9 @@ bool LoadTerrainPrograms()
     return v;
 }
 
+
 // -----------------------------------------------------------------------------
-/**
- * Load the Reduction Program
+/** Load the Reduction Program
  *
  * This program is responsible for precomputing a reduction for the
  * subdivision tree. This allows to locate the i-th bit in a bitfield of
@@ -882,6 +909,7 @@ bool LoadBatchProgram()
 
     return (glGetError() == GL_NO_ERROR);
 }
+
 
 // -----------------------------------------------------------------------------
 /**
@@ -1198,6 +1226,7 @@ void LoadNmapTexture16(int smapID, const djg_texture *dmap)
     float gain = 0.08f;
     float lacunarity = 0.08f;
 
+
     for (int j = 0; j < h; ++j){
         for (int i = 0; i < w; ++i) {
             int i1 = std::max(0, i - 1);
@@ -1305,22 +1334,131 @@ void LoadNmapTexture8(int smapID, const djg_texture *dmap)
 
 float fBm(const glm::vec2 pos, const int octaveCount, float lacunarity, float gain )
 {
-	float noiseSum     = 0.0;
-	float amplitude    = 1.0;
-	float amplitudeSum = 0.0;
-	
-	glm::vec2 sample = pos;
-	
-	for( int i = 0; i < octaveCount; ++i )
-	{
-		noiseSum     += amplitude * Simplex::noise( sample );
-		amplitudeSum += amplitude;
-		
-		amplitude *= gain;
-		sample    *= lacunarity;
-	}
-	
-	return (noiseSum / amplitudeSum);
+  float noiseSum     = 0.0;
+  float amplitude    = 1.0;
+  float amplitudeSum = 0.0;
+  
+  glm::vec2 sample = pos;
+  
+  for( int i = 0; i < octaveCount; ++i )
+  {
+    noiseSum     += amplitude * Simplex::noise( sample );
+    amplitudeSum += amplitude;
+    
+    amplitude *= gain;
+    sample    *= lacunarity;
+  }
+  
+  return (noiseSum / amplitudeSum);
+}
+
+
+float calcfBm(glm::vec3 pos){
+    float e  = 1.f * Simplex::fBm(1.f * pos)
+           +  0.5f * Simplex::fBm(2.f * pos)
+           + 0.25f * Simplex::fBm(4.f * pos);
+    return e;
+}
+
+float calcfBm(glm::vec3 pos, float exp){
+    float e  = 1.f * Simplex::fBm(1.f * pos)
+           +  0.5f * Simplex::fBm(2.f * pos)
+           + 0.25f * Simplex::fBm(4.f * pos);
+    e = e / (1.f + 0.5f + 0.25f);
+    e = pow(e, exp);
+    return e;
+}
+
+float calcIQfBm(glm::vec3 pos){
+    float e  = 1.f * Simplex::iqfBm(1.f * pos)
+           +  0.5f * Simplex::iqfBm(2.f * pos)
+           + 0.25f * Simplex::iqfBm(4.f * pos);
+    return e;
+}
+
+float calcIQfBm(glm::vec3 pos, float exp){
+    float e  = 1.f * Simplex::iqfBm(1.f * pos)
+           +  0.5f * Simplex::iqfBm(2.f * pos)
+           + 0.25f * Simplex::iqfBm(4.f * pos);
+    e = e / (1.f + 0.5f + 0.25f);
+    e = pow(e, exp);
+    return e;
+}
+
+float calcIQMfBm(glm::vec3 pos){
+    float e  = 1.f * Simplex::iqfBm(1.f * pos)
+           +  0.5f * Simplex::iqfBm(2.f * pos)
+           + 0.25f * Simplex::iqfBm(4.f * pos);
+    return e;
+}
+
+float calcIQMfBm(glm::vec3 pos, float exp){
+    float e  = 1.f * Simplex::iqMatfBm(1.f * pos)
+           +  0.5f * Simplex::iqMatfBm(2.f * pos)
+           + 0.25f * Simplex::iqMatfBm(4.f * pos);
+    e = e / (1.f + 0.5f + 0.25f);
+    e = pow(e, exp);
+    return e;
+}
+
+float calcDfBm(glm::vec3 pos){
+    float e  = 1.f * Simplex::dfBm(1.f * pos).x
+           +  0.5f * Simplex::dfBm(2.f * pos).x
+           + 0.25f * Simplex::dfBm(4.f * pos).x;
+    return e;
+}
+
+float calcDfBm(glm::vec3 pos, float exp){
+    float e  = 1.f * Simplex::dfBm(1.f * pos).x
+           +  0.5f * Simplex::dfBm(2.f * pos).x
+           + 0.25f * Simplex::dfBm(4.f * pos).x;
+    e = e / (1.f + 0.5f + 0.25f);
+    e = pow(e, exp);
+    return e;
+}
+
+float calcWorleyfBm(glm::vec3 pos){
+    float e  = 1.f * Simplex::worleyfBm(1.f * pos)
+           +  0.5f * Simplex::worleyfBm(2.f * pos)
+           + 0.25f * Simplex::worleyfBm(4.f * pos);
+    return e;
+}
+
+float calcWorleyfBm(glm::vec3 pos, float exp){
+    float e = 0.f;
+    float amp = 0.f;
+    if(!automatic_octaves==true)
+        e = Simplex::worleyfBm(frequencia_ter*pos, octaves_ter, lacunarity_ter, gain_ter);
+    else{
+        for(int i = 0; i < octaves_ter; i++){
+            float amp_parcial = 1.f / float(pow(2,i));
+            e += amp_parcial * Simplex::worleyfBm((1.f * float(pow(2,i))) * pos);
+            amp += amp_parcial;
+        }
+        e = e / amp;
+    }
+    if(exp > 0)
+        e = pow(e, exp);
+    return e;
+}
+
+//
+float calcRidgedMF(glm::vec3 pos, float exp){
+    float e = 0.f;
+    float amp = 0.f;
+    if(!automatic_octaves==true)
+        e = Simplex::ridgedMF(frequencia_ter*pos, ridgeOffset, octaves_ter, lacunarity_ter, gain_ter);
+    else{
+        for(int i = 0; i < octaves_ter; i++){
+            float amp_parcial = 1.f / float(pow(2,i));
+            e += amp_parcial * Simplex::ridgedMF((1.f * float(pow(2,i))) * pos);
+            amp += amp_parcial;
+        }
+        e = e / amp;
+    }
+    if(exp > 0)
+        e = pow(e, exp);
+    return e;
 }
 
 bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
@@ -1335,8 +1473,8 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     float min = 1000000000000000000000000000000000000000000000000000000.f;
     float scale = 2.f; // Escala do FBM
 
-    int w = 128;
-    int h = 128;
+    int w = 1280;
+    int h = 1280;
     
 
     int mipcnt = djgt__mipcnt(w, h, 1);
@@ -1350,32 +1488,37 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     float octaves = 32.f;
     float lacunarity = 2.0f;
     float gain = .66f;
-    float tamAmostra = w / (float)10000;
-    LOG("tamAmostra: %f), ",tamAmostra);
     
-    //Frequencia de vales
-    float frequencia = 1.42f;
-
-
-
-    Simplex::seed(3564);
+    float tamAmostra = w / (float)(pow(10,amostra_ter/2.5f));
+    Simplex::seed(seeds);
     for (int j = 0; j < h; j++){
         for (int i = 0; i < w; i++) {
-            float zf = 0.f;
-            glm::vec2 pos = glm::vec2(float(i*tamAmostra), float(j*tamAmostra));
-            LOG("(x:%f, y:%f), ", pos.x, pos.y);
+            float zf = -1.5f;
+            //glm::vec2 pos = glm::vec2(float(i*tamAmostra), float(j*tamAmostra));
+            glm::vec3 pos = glm::vec3(float(i*tamAmostra), zf, float(j*tamAmostra));
+
+            if(mountain_dunes == MONTANHA)
+                zf = calcWorleyfBm(pos, elevacao);
+
+
+            else if(mountain_dunes == DUNA)
+                zf = 1.f - calcWorleyfBm(pos, elevacao);
+//                zf = 1.f - Simplex::ridgedMF(frequencia_ter*pos);
+
+            
+            glm::vec3 pos3 = glm::vec3(float(i*tamAmostra), zf, float(j*tamAmostra));
+
+
+            zf += calcIQMfBm(pos3*frequencia_fbm_ter,elevacao);
+            //LOG("(x:%f, y:%f), ", pos.x, pos.y);
 
             //Superfície mais montanhosa
-            frequencia = 3.42f;
 
             //zf = Simplex::ridgedNoise(frequencia*pos)*1.01f;
-            zf = 1.f-Simplex::worleyfBm(frequencia*pos);
-            
+            //zf = 1.f-Simplex::worleyfBm(frequencia*pos);
             //Superfície mais dunesca
             //zf = 1.f - Simplex::ridgedNoise(frequencia*pos);
             
-            //glm::vec3 pos3 = glm::vec3(float(i*tamAmostra), zf, float(j*tamAmostra));
-            frequencia = 1.42f;
 
             //zf *= Simplex::ridgedMF(frequencia*pos, ridge, octaves, lacunarity, gain);
             //glm::vec2 pos = glm::vec2(float(i), float(j));
@@ -1398,7 +1541,7 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
             //     +  0.5f * Simplex::worleyfBm(2.f * pos);
                      //+ 0.25 * Simplex::iqfBm(4.f * pos);
             //zf = zf / (1.f + 0.5f);// + 0.25);
-            zf = pow(zf, 2.f);
+            //zf = pow(zf, 2.f);
             //pos3 = glm::vec3(x,zf,y);
             //zf -= Simplex::iqfBm(pos3);*/
             
@@ -1416,15 +1559,24 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
             zf_arr[i + w*j] = zf;
         }
     }
+    LOG("(min:%f, max:%f), \n", min, max);
+    float max2 = -1000000000000000000000000000000000000000000000000000000.f;
+    float min2 = 1000000000000000000000000000000000000000000000000000000.f;
     
     for (int j = 0; j < h; ++j){
         for (int i = 0; i < w; ++i) {
             float zf = zf_arr[i + w*j];
 
-            zf_arr[i + w*j] -= min;
-
+            zf_arr[i + w*j] = (zf - min)/(max-min);
+            /* if(zf_arr[i + w*j]<min2)
+                min2 = zf_arr[i + w*j];
+                    
+            if(zf_arr[i + w*j]>max2)
+                max2 = zf_arr[i + w*j]; */
         }
     }
+    LOG("(min2:%f, max2:%f), \n", min2, max2);
+    
     for (int j = 0; j < h; ++j){
         for (int i = 0; i < w; ++i) {
             /*
@@ -1432,7 +1584,7 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
             uint16_t z = texels[i + w * j]; // in [0,2^16-1]
             float zf = float(z) / float((1 << 16) - 1);
             uint16_t z2 = zf * zf * ((1 << 16) - 1);
-            /**/
+            */
   
             float zf = zf_arr[i + w*j];
             uint16_t z = uint16_t(zf * ((1 << 16) - 1));
@@ -1561,6 +1713,7 @@ bool LoadTextures()
 //
 ////////////////////////////////////////////////////////////////////////////////
 
+
 // -----------------------------------------------------------------------------
 /**
  * Load Terrain Variables UBO
@@ -1654,7 +1807,8 @@ bool LoadTerrainVariables()
         variables.frustum[i*2+j]*= dja::norm(dja::vec3(tmp.x, tmp.y, tmp.z));
     }
 
-    // upLoad to GPU
+
+// upLoad to GPU
     djgb_to_gl(g_gl.streams[STREAM_TERRAIN_VARIABLES], (const void *)&variables, NULL);
     djgb_glbindrange(g_gl.streams[STREAM_TERRAIN_VARIABLES],
                      GL_UNIFORM_BUFFER,
@@ -1861,7 +2015,8 @@ bool LoadSphereBuffers()
     if (glIsBuffer(g_gl.buffers[BUFFER_SPHERE_INDEXES]))
         glDeleteBuffers(1, &g_gl.buffers[BUFFER_SPHERE_INDEXES]);
 
-    LOG("Loading {Sphere-VertexBuffer}\n");
+
+LOG("Loading {Sphere-VertexBuffer}\n");
     glGenBuffers(1, &g_gl.buffers[BUFFER_SPHERE_VERTICES]);
     glBindBuffer(GL_ARRAY_BUFFER, g_gl.buffers[BUFFER_SPHERE_VERTICES]);
     glBufferStorage(GL_ARRAY_BUFFER,
@@ -1939,6 +2094,7 @@ bool LoadMeshletVertexArray()
         glDeleteVertexArrays(1, &g_gl.vertexArrays[VERTEXARRAY_MESHLET]);
 
     glGenVertexArrays(1, &g_gl.vertexArrays[VERTEXARRAY_MESHLET]);
+
 
     glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_MESHLET]);
     glEnableVertexAttribArray(0);
@@ -2090,35 +2246,6 @@ bool LoadFramebuffers()
 }
 
 
-bool createTexture(){
-    LOG("CT");
-    bool v = true;
-    const char * fname = g_terrain.dmap.pathToFile.c_str();
-    int width = 3601;
-    int height = 3601;
-
-    int blur_radius = 4;
-    int do_blur = 1;
-    int blur_iter = 4;
-    LOG("Rand");
-    
-    if (v) v &= init_rand(grid);
-    LOG("Rand end");
-
-    /*
-    int i = 0;
-    if(do_blur) {
-    	for(; i < blur_iter; i++) {
-    		blur_grid(grid, blur_radius);
-    	}
-    }
-    
-    save_grid_as_png(grid, fname);
-
-    free_grid(grid); */
-    LOG("CT end");
-    return v;
-}
 ////////////////////////////////////////////////////////////////////////////////
 // OpenGL Resource Loading
 //
@@ -2134,7 +2261,6 @@ void init()
         g_gl.clocks[i] = djgc_create();
     }
 
-    //if (v) v &= createTexture();
     if (v) v &= LoadTextures();
     if (v) v &= LoadBuffers();
     if (v) v &= LoadFramebuffers();
@@ -2241,6 +2367,7 @@ void lebReductionPass()
         it-= 5;
     }
 
+
     glUseProgram(g_gl.programs[PROGRAM_LEB_REDUCTION]);
     while (--it >= 0) {
         int loc = glGetUniformLocation(g_gl.programs[PROGRAM_LEB_REDUCTION], "u_PassID");
@@ -2305,7 +2432,8 @@ void lebBatchingPassCs()
                      BUFFER_TERRAIN_DISPATCH_CS,
                      g_gl.buffers[BUFFER_TERRAIN_DISPATCH_CS]);
 
-    glDispatchCompute(1, 1, 1);
+
+glDispatchCompute(1, 1, 1);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BUFFER_TERRAIN_DRAW, 0);
@@ -2422,7 +2550,8 @@ void lebUpdate()
     static int pingPong = 0;
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BUFFER_LEB, g_gl.buffers[BUFFER_LEB]);
 
-    djgc_start(g_gl.clocks[CLOCK_UPDATE]);
+
+djgc_start(g_gl.clocks[CLOCK_UPDATE]);
     switch (g_terrain.method) {
     case METHOD_TS:
         lebUpdateAndRenderTs(pingPong);
@@ -2516,6 +2645,7 @@ dja::mat4 cameraProjectionMatrix()
 #if 0
         float ratio = (float)g_framebuffer.w / (float)g_framebuffer.h;
         float planeSize = tan(radians(g_camera.fovy / 2.0f));
+
 
         projection = dja::mat4::homogeneous::orthographic(
             -planeSize * ratio, planeSize * ratio, -planeSize, planeSize,
@@ -2645,6 +2775,7 @@ void renderViewer()
     // render top view
     renderTopView();
 
+
     // draw HUD
     if (g_app.viewer.hud) {
         // ImGui
@@ -2654,6 +2785,7 @@ void renderViewer()
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+
         // Camera Widget
         ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(250, 180), ImGuiCond_FirstUseEver);
@@ -2823,6 +2955,7 @@ void renderViewer()
             if (GLAD_GL_NV_mesh_shader)
                 ePipelines.push_back("Mesh Shader");
 
+
             if (ImGui::Combo("Shading", &g_terrain.shading, &eShadings[0], BUFFER_SIZE(eShadings)))
                 LoadTerrainPrograms();
             if (ImGui::Combo("GPU Pipeline", &g_terrain.method, &ePipelines[0], ePipelines.size())) {
@@ -2880,7 +3013,85 @@ void renderViewer()
         }
         ImGui::End();
 
-        //ImGui::ShowDemoWindow();
+        ImGui::SetNextWindowPos(ImVec2(10, 250), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(250, 320), ImGuiCond_FirstUseEver);
+
+
+        ImGui::Begin("Noise Settings");
+        {
+            const char* eTopology[] = {
+                "Mountains",
+                "Plain",
+                "Dunes"
+            };
+            const char* eNoise[] = {
+                "fBm",
+                "IQfBm",
+                "calcIQMfBm",
+                "calcDfBm",
+                "calcWorleyfBm",
+                "ridgedMF",
+            };
+
+            if (ImGui::SliderInt("Elevation", &elevacao, -1, 7)){
+                LOG("void Int = %i\n", elevacao);
+            }
+            if (ImGui::Combo("Geography", &mountain_dunes, &eTopology[0], BUFFER_SIZE(eTopology))) {
+                LOG("Montanha, Planície e Duna = %i\n", mountain_dunes);
+            }
+            if (ImGui::SliderInt("Size", &amostra_ter, 0, 24)) {
+                LOG("Amostra = %i\n", amostra_ter);
+            }
+            if (ImGui::SliderFloat("Frequência", &wavelength, 0.f, 12.f, "%.01f")) {
+                LOG("Wavelength = %f\n", wavelength);
+            }
+            if (ImGui::SliderFloat("Ridge size", &ridgeOffset, 0.f, 4.f, "%0.01f")) {
+                LOG("Ridge Size = %f\n", ridgeOffset);
+            }
+            if (ImGui::Checkbox("Automatic?", &automatic_octaves))
+                LOG("Automatic Octaves = %f\n", automatic_octaves);
+            ImGui::SameLine();            
+            if (ImGui::SliderInt("Octaves", &octaves_ter, 0, 20)) {
+                LOG("Octaves = %f\n", octaves_ter);
+            }
+            if (ImGui::SliderFloat("Lacunarity", &lacunarity_ter, 0.f, 32.f, "%0.5f")) {
+                LOG("Lacunarity = %f\n", lacunarity_ter);
+            }
+            if (ImGui::SliderFloat("Gain", &gain_ter, 0.f, 1.f, "%0.01f")) {
+                LOG("Gain = %f\n", gain_ter);
+            }
+            if (ImGui::SliderFloat("fBm size", &frequencia_fbm_ter, 0.f, 15.f, "%.01f")) {
+                LOG("Frequência do fBm = %f\n", frequencia_fbm_ter);
+            }
+            if (ImGui::SliderFloat("Amplitudes", &frequencia_fbm_ter, 0.f, 15.f, "%.01f")) {
+                LOG("Frequência do fBm = %f\n", frequencia_fbm_ter);
+            }
+            if (ImGui::SliderInt("Seed", &seeds, 0, 100)) {
+                LOG("Seed = %i\n", seeds);
+            }
+            
+
+            if (ImGui::Button("Generate Terrain"))
+                LoadDmapTexture();
+            if (ImGui::Button("Reset")){
+                elevacao = 0;
+                mountain_dunes = MONTANHA;
+                size_ter = 1280;
+                amostra_ter = 15;
+                seeds = 1000;
+                wavelength = 1.4f;
+                frequencia_ter = 1.4f;
+                frequencia_fbm_ter = 1.42f;
+                ridgeOffset = 1.0f;
+                octaves_ter = 4;
+                lacunarity_ter = 2.0f;
+                gain_ter = 0.5f;
+                LoadDmapTexture();
+            }
+
+        }
+        ImGui::End();
+
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -2905,6 +3116,8 @@ void renderViewer()
  * Render Everything
  *
  */
+
+    
 void render()
 {
     glBindFramebuffer(GL_FRAMEBUFFER, g_gl.framebuffers[FRAMEBUFFER_SCENE]);
@@ -3100,4 +3313,3 @@ int main(int, char **)
     return 0;
     
 }
-
