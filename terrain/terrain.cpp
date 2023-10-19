@@ -132,24 +132,34 @@ enum {
     PLANICE,
     DUNA
 };
+enum {
+    IQFBM,
+    WORLEYFBM,
+    RIDGEDMF
+};
 
+int noise = IQFBM;
 bool automatic_octaves = false;
 
 int elevacao = 0;
-int mountain_dunes = MONTANHA;
+int mountain_dunes = PLANICE;
 
 int size_ter = 1280;
 int amostra_ter = 15;
 int seeds = 1000;
-float wavelength = 1.4f;
-float frequencia_ter = 1.4f;
-float frequencia_fbm_ter = 1.42f;
-
 
 float ridgeOffset = 1.0f;
+
+float wavelength = 1.4f;
 int octaves_ter = 4;
 float lacunarity_ter = 2.0f;
 float gain_ter = 0.5f;
+
+float wavelengthFBM = 1.42f;
+int octavesFBM = 4;
+float lacunarityFBM = 2.0f;
+float gainFBM = 0.5f;
+
 // -----------------------------------------------------------------------------
 // Terrain Manager
 enum { METHOD_CS, METHOD_TS, METHOD_GS, METHOD_MS };
@@ -1353,86 +1363,21 @@ float fBm(const glm::vec2 pos, const int octaveCount, float lacunarity, float ga
 }
 
 
-float calcfBm(glm::vec3 pos){
-    float e  = 1.f * Simplex::fBm(1.f * pos)
-           +  0.5f * Simplex::fBm(2.f * pos)
-           + 0.25f * Simplex::fBm(4.f * pos);
-    return e;
-}
-
-float calcfBm(glm::vec3 pos, float exp){
-    float e  = 1.f * Simplex::fBm(1.f * pos)
-           +  0.5f * Simplex::fBm(2.f * pos)
-           + 0.25f * Simplex::fBm(4.f * pos);
-    e = e / (1.f + 0.5f + 0.25f);
-    e = pow(e, exp);
-    return e;
-}
-
-float calcIQfBm(glm::vec3 pos){
-    float e  = 1.f * Simplex::iqfBm(1.f * pos)
-           +  0.5f * Simplex::iqfBm(2.f * pos)
-           + 0.25f * Simplex::iqfBm(4.f * pos);
-    return e;
-}
-
-float calcIQfBm(glm::vec3 pos, float exp){
-    float e  = 1.f * Simplex::iqfBm(1.f * pos)
-           +  0.5f * Simplex::iqfBm(2.f * pos)
-           + 0.25f * Simplex::iqfBm(4.f * pos);
-    e = e / (1.f + 0.5f + 0.25f);
-    e = pow(e, exp);
-    return e;
-}
-
-float calcIQMfBm(glm::vec3 pos){
-    float e  = 1.f * Simplex::iqfBm(1.f * pos)
-           +  0.5f * Simplex::iqfBm(2.f * pos)
-           + 0.25f * Simplex::iqfBm(4.f * pos);
-    return e;
-}
-
-float calcIQMfBm(glm::vec3 pos, float exp){
-    float e  = 1.f * Simplex::iqMatfBm(1.f * pos)
-           +  0.5f * Simplex::iqMatfBm(2.f * pos)
-           + 0.25f * Simplex::iqMatfBm(4.f * pos);
-    e = e / (1.f + 0.5f + 0.25f);
-    e = pow(e, exp);
-    return e;
-}
-
-float calcDfBm(glm::vec3 pos){
-    float e  = 1.f * Simplex::dfBm(1.f * pos).x
-           +  0.5f * Simplex::dfBm(2.f * pos).x
-           + 0.25f * Simplex::dfBm(4.f * pos).x;
-    return e;
-}
-
-float calcDfBm(glm::vec3 pos, float exp){
-    float e  = 1.f * Simplex::dfBm(1.f * pos).x
-           +  0.5f * Simplex::dfBm(2.f * pos).x
-           + 0.25f * Simplex::dfBm(4.f * pos).x;
-    e = e / (1.f + 0.5f + 0.25f);
-    e = pow(e, exp);
-    return e;
-}
-
-float calcWorleyfBm(glm::vec3 pos){
-    float e  = 1.f * Simplex::worleyfBm(1.f * pos)
-           +  0.5f * Simplex::worleyfBm(2.f * pos)
-           + 0.25f * Simplex::worleyfBm(4.f * pos);
-    return e;
-}
-
-float calcWorleyfBm(glm::vec3 pos, float exp){
+float calcfBmNoise(glm::vec3 pos, float exp){
     float e = 0.f;
     float amp = 0.f;
     if(!automatic_octaves==true)
-        e = Simplex::worleyfBm(frequencia_ter*pos, octaves_ter, lacunarity_ter, gain_ter);
+        if(true)
+            e = Simplex::fBm(wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM);
+        else
+            e = Simplex::iqfBm(wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM);
     else{
-        for(int i = 0; i < octaves_ter; i++){
-            float amp_parcial = 1.f / float(pow(2,i));
-            e += amp_parcial * Simplex::worleyfBm((1.f * float(pow(2,i))) * pos);
+        for(int i = 0; i < octavesFBM; i++){
+            float amp_parcial = 0.5f / float(pow(2,i));
+            if(true)
+                e += amp_parcial * Simplex::fBm(wavelengthFBM*pos);
+            else
+                e += amp_parcial * Simplex::iqfBm(pos);
             amp += amp_parcial;
         }
         e = e / amp;
@@ -1442,16 +1387,25 @@ float calcWorleyfBm(glm::vec3 pos, float exp){
     return e;
 }
 
-//
-float calcRidgedMF(glm::vec3 pos, float exp){
+float calcSurfaceNoise(glm::vec3 pos, float exp){
     float e = 0.f;
     float amp = 0.f;
     if(!automatic_octaves==true)
-        e = Simplex::ridgedMF(frequencia_ter*pos, ridgeOffset, octaves_ter, lacunarity_ter, gain_ter);
+        if(noise == RIDGEDMF)
+            e = Simplex::ridgedMF(wavelength*pos, ridgeOffset, octaves_ter, lacunarity_ter, gain_ter);
+        else if(noise == IQFBM)
+            e = Simplex::iqfBm(wavelength*pos, octaves_ter, lacunarity_ter, gain_ter);
+        else if(noise == WORLEYFBM)
+            e = Simplex::worleyfBm(wavelength*pos, octaves_ter, lacunarity_ter, gain_ter);
     else{
         for(int i = 0; i < octaves_ter; i++){
             float amp_parcial = 1.f / float(pow(2,i));
-            e += amp_parcial * Simplex::ridgedMF((1.f * float(pow(2,i))) * pos);
+            if(noise == RIDGEDMF)
+                e += amp_parcial * Simplex::ridgedMF((1.f * float(pow(2,i))) * pos);
+            else if(noise == IQFBM)
+                e += amp_parcial * Simplex::iqfBm((1.f * float(pow(2,i))) * pos);
+            else if(noise == WORLEYFBM)
+                e += amp_parcial * Simplex::worleyfBm((1.f * float(pow(2,i))) * pos);
             amp += amp_parcial;
         }
         e = e / amp;
@@ -1497,19 +1451,20 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
             //glm::vec2 pos = glm::vec2(float(i*tamAmostra), float(j*tamAmostra));
             glm::vec3 pos = glm::vec3(float(i*tamAmostra), zf, float(j*tamAmostra));
 
-            if(mountain_dunes == MONTANHA)
-                zf = calcWorleyfBm(pos, elevacao);
+            if(mountain_dunes != PLANICE){
+                float sn = calcSurfaceNoise(pos, elevacao);
+                if(mountain_dunes == MONTANHA)
+                    zf = sn;
 
-
-            else if(mountain_dunes == DUNA)
-                zf = 1.f - calcWorleyfBm(pos, elevacao);
-//                zf = 1.f - Simplex::ridgedMF(frequencia_ter*pos);
-
+                else if(mountain_dunes == DUNA)
+                    zf = 1.f - sn;
+            }
+            else
+                zf = calcSurfaceNoise(pos,elevacao);
             
-            glm::vec3 pos3 = glm::vec3(float(i*tamAmostra), zf, float(j*tamAmostra));
+            pos = glm::vec3(float(i*tamAmostra), zf, float(j*tamAmostra));
 
 
-            zf += calcIQMfBm(pos3*frequencia_fbm_ter,elevacao);
             //LOG("(x:%f, y:%f), ", pos.x, pos.y);
 
             //Superfície mais montanhosa
@@ -3024,13 +2979,14 @@ void renderViewer()
                 "Plain",
                 "Dunes"
             };
-            const char* eNoise[] = {
+            const char* efBmNoise[] = {
                 "fBm",
                 "IQfBm",
-                "calcIQMfBm",
-                "calcDfBm",
-                "calcWorleyfBm",
-                "ridgedMF",
+            };
+            const char* eSurfaceNoise[] = {
+                "IQfBm",
+                "WorleyfBm",
+                "ridgedMF"
             };
 
             if (ImGui::SliderInt("Elevation", &elevacao, -1, 7)){
@@ -3039,33 +2995,41 @@ void renderViewer()
             if (ImGui::Combo("Geography", &mountain_dunes, &eTopology[0], BUFFER_SIZE(eTopology))) {
                 LOG("Montanha, Planície e Duna = %i\n", mountain_dunes);
             }
+            if (ImGui::Combo("Surface Noise", &noise, &eSurfaceNoise[0], BUFFER_SIZE(eSurfaceNoise))) {
+                LOG("Surface Noise = %i\n", noise);
+            }
             if (ImGui::SliderInt("Size", &amostra_ter, 0, 24)) {
                 LOG("Amostra = %i\n", amostra_ter);
             }
-            if (ImGui::SliderFloat("Frequência", &wavelength, 0.f, 12.f, "%.01f")) {
-                LOG("Wavelength = %f\n", wavelength);
-            }
-            if (ImGui::SliderFloat("Ridge size", &ridgeOffset, 0.f, 4.f, "%0.01f")) {
+
+            if (ImGui::SliderFloat("Ridge size", &ridgeOffset, 0.f, 4.f, "%0.01f"))
                 LOG("Ridge Size = %f\n", ridgeOffset);
-            }
+
             if (ImGui::Checkbox("Automatic?", &automatic_octaves))
                 LOG("Automatic Octaves = %f\n", automatic_octaves);
-            ImGui::SameLine();            
-            if (ImGui::SliderInt("Octaves", &octaves_ter, 0, 20)) {
+            ImGui::SameLine();   
+            if (ImGui::SliderInt("Octaves", &octaves_ter, 0, 20))
                 LOG("Octaves = %f\n", octaves_ter);
-            }
-            if (ImGui::SliderFloat("Lacunarity", &lacunarity_ter, 0.f, 32.f, "%0.5f")) {
+
+            if (ImGui::SliderFloat("Wavelength", &wavelength, 0.f, 12.f, "%.01f"))
+                LOG("Wavelength = %f\n", wavelength);
+            if (ImGui::SliderFloat("Lacunarity", &lacunarity_ter, 0.f, 32.f, "%0.5f"))
                 LOG("Lacunarity = %f\n", lacunarity_ter);
-            }
-            if (ImGui::SliderFloat("Gain", &gain_ter, 0.f, 1.f, "%0.01f")) {
+            if (ImGui::SliderFloat("Gain", &gain_ter, 0.f, 1.f, "%0.01f"))
                 LOG("Gain = %f\n", gain_ter);
+            
+
+            if (ImGui::SliderInt("OctavesFBM", &octavesFBM, 0, 20))
+                LOG("OctavesFBM = %f\n", octavesFBM);
+            if (ImGui::SliderFloat("WavelengthFBM", &wavelengthFBM, 0.f, 12.f, "%.01f"))
+                LOG("WavelengthFBM = %f\n", wavelengthFBM);
+            if (ImGui::SliderFloat("LacunarityFBM", &lacunarityFBM, 0.f, 32.f, "%0.5f"))
+                LOG("LacunarityFBM = %f\n", lacunarityFBM);
+            if (ImGui::SliderFloat("GainFBM", &gainFBM, 0.f, 1.f, "%0.01f")) {
+                LOG("GainFBM = %f\n", gainFBM);
             }
-            if (ImGui::SliderFloat("fBm size", &frequencia_fbm_ter, 0.f, 15.f, "%.01f")) {
-                LOG("Frequência do fBm = %f\n", frequencia_fbm_ter);
-            }
-            if (ImGui::SliderFloat("Amplitudes", &frequencia_fbm_ter, 0.f, 15.f, "%.01f")) {
-                LOG("Frequência do fBm = %f\n", frequencia_fbm_ter);
-            }
+
+ 
             if (ImGui::SliderInt("Seed", &seeds, 0, 100)) {
                 LOG("Seed = %i\n", seeds);
             }
@@ -3074,18 +3038,21 @@ void renderViewer()
             if (ImGui::Button("Generate Terrain"))
                 LoadDmapTexture();
             if (ImGui::Button("Reset")){
+                automatic_octaves = false;
                 elevacao = 0;
-                mountain_dunes = MONTANHA;
+                mountain_dunes = PLANICE;
                 size_ter = 1280;
                 amostra_ter = 15;
                 seeds = 1000;
-                wavelength = 1.4f;
-                frequencia_ter = 1.4f;
-                frequencia_fbm_ter = 1.42f;
                 ridgeOffset = 1.0f;
+                wavelength = 1.4f;
                 octaves_ter = 4;
                 lacunarity_ter = 2.0f;
                 gain_ter = 0.5f;
+                wavelengthFBM = 1.42f;
+                octavesFBM = 4;
+                lacunarityFBM = 2.0f;
+                gainFBM = 0.5f;
                 LoadDmapTexture();
             }
 
