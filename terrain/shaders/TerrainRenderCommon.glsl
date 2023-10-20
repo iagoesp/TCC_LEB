@@ -421,8 +421,8 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos)
 
     return vec4(abs(n), 1);
 #elif SHADING_COLOR
-
-    return vec4(vec3(worldPos.y)/255.f, 1);
+    float x = 100;
+    return vec4(vec3(worldPos.y/2514), 1);
 #else
     return vec4(1, 0, 0, 1);
 #endif

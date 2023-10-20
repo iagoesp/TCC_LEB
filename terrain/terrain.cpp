@@ -133,9 +133,10 @@ enum {
     DUNA
 };
 enum {
+    FBM,
     IQFBM,
-    WORLEYFBM,
-    RIDGEDMF
+    RIDGEDMF,
+    WORLEYFBM
 };
 
 int noise = IQFBM;
@@ -182,7 +183,7 @@ struct TerrainManager {
 } g_terrain = {
     {true, true, false, false, true},
     {std::string(PATH_TO_ASSET_DIRECTORY "./kauai.png"),
-     52660.0f, 52660.0f, -14.0f, 1587.0f,
+     52660.0f, 52660.0f, 0.0f, 2500.0f,
      1.0f},
     METHOD_CS,
     SHADING_DIFFUSE,
@@ -194,6 +195,7 @@ struct TerrainManager {
     52660.0f
 };
 
+//grid_t * grid = create_grid(g_terrain.dmap.width, g_terrain.dmap.height);
 grid_t * grid = create_grid(g_terrain.dmap.width, g_terrain.dmap.height);
 
 // -----------------------------------------------------------------------------
@@ -1162,12 +1164,9 @@ bool LoadSceneFramebufferTexture()
  *
  * This Loads an RG32F texture used as a slope map
  */
-void LoadNmapTexture16(int smapID, const djg_texture *dmap, std::vector<uint16_t> texels, std::vector<float> normals)
+void LoadNmapTexture16(int smapID, std::vector<uint16_t> texels, int w, int h)
 {
-    int w = 60;//dmap->next->x;
-    int h = 60;//dmap->next->y;
-    LOG("w: %i\n", w);
-    LOG("h: %i\n", h);
+
     int mipcnt = djgt__mipcnt(w, h, 1);
 
     std::vector<float> smap(w * h * 2);
@@ -1193,9 +1192,6 @@ void LoadNmapTexture16(int smapID, const djg_texture *dmap, std::vector<uint16_t
 
             smap[    2 * (i + w * j)] = slope_x;
             smap[1 + 2 * (i + w * j)] = slope_y;
-            
-            //smap[    2 * (i + w * j)] = normals[    2 * (i + w * j)];//slope_x;
-            //smap[1 + 2 * (i + w * j)] = normals[ 1 + 2 * (i + w * j)];//slope_y;
 
         }  
     } 
@@ -1219,118 +1215,6 @@ void LoadNmapTexture16(int smapID, const djg_texture *dmap, std::vector<uint16_t
     glTexParameteri(GL_TEXTURE_2D,
         GL_TEXTURE_WRAP_T,
         GL_CLAMP_TO_EDGE);
-    glActiveTexture(GL_TEXTURE0);
-}
-
-void LoadNmapTexture16(int smapID, const djg_texture *dmap)
-{
-    int w = dmap->next->x;
-    int h = dmap->next->y;
-    LOG("w: %i\n", w);
-    LOG("h: %i\n", h);
-    const uint16_t *texels = (const uint16_t *)dmap->next->texels;
-    int mipcnt = djgt__mipcnt(w, h, 1);
-
-    std::vector<float> smap(w * h * 2);
-    int octaves = 8;
-    float gain = 0.08f;
-    float lacunarity = 0.08f;
-
-
-    for (int j = 0; j < h; ++j){
-        for (int i = 0; i < w; ++i) {
-            int i1 = std::max(0, i - 1);
-            int i2 = std::min(w - 1, i + 1);
-            int j1 = std::max(0, j - 1);
-            int j2 = std::min(h - 1, j + 1);
-            
-            uint16_t px_l = texels[i1 + w * j]; // in [0,2^16-1]
-            uint16_t px_r = texels[i2 + w * j]; // in [0,2^16-1]
-            uint16_t px_b = texels[i + w * j1]; // in [0,2^16-1]
-            uint16_t px_t = texels[i + w * j2]; // in [0,2^16-1]
-            float z_l = (float)px_l / 65535.0f; // in [0, 1]
-            float z_r = (float)px_r / 65535.0f; // in [0, 1]
-            float z_b = (float)px_b / 65535.0f; // in [0, 1]
-            float z_t = (float)px_t / 65535.0f; // in [0, 1]
-            float slope_x = (float)w * 0.5f * (z_r - z_l);
-            float slope_y = (float)h * 0.5f * (z_t - z_b); 
-            smap[    2 * (i + w * j)] = slope_x;
-            smap[1 + 2 * (i + w * j)] = slope_y;
-        }  
-    } 
-
-    if (glIsTexture(g_gl.textures[smapID]))
-        glDeleteTextures(1, &g_gl.textures[smapID]);
-
-    glGenTextures(1, &g_gl.textures[smapID]);
-    glActiveTexture(GL_TEXTURE0 + smapID);
-    glBindTexture(GL_TEXTURE_2D, g_gl.textures[smapID]);
-    glTexStorage2D(GL_TEXTURE_2D, mipcnt, GL_RG32F, w, h);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RG, GL_FLOAT, &smap[0]);
-
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D,
-        GL_TEXTURE_MIN_FILTER,
-        GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D,
-        GL_TEXTURE_WRAP_S,
-        GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D,
-        GL_TEXTURE_WRAP_T,
-        GL_CLAMP_TO_EDGE);
-    glActiveTexture(GL_TEXTURE0);
-}
-
-void LoadNmapTexture8(int smapID, const djg_texture *dmap)
-{
-    int w = dmap->next->x;
-    int h = dmap->next->y;
-    const uint8_t *texels = (const uint8_t *)dmap->next->texels;
-    int mipcnt = djgt__mipcnt(w, h, 1);
-
-    std::vector<float> smap(w * h * 2);
-
-    for (int j = 0; j < h; ++j)
-        for (int i = 0; i < w; ++i) {
-            int i1 = std::max(0, i - 1);
-            int i2 = std::min(w - 1, i + 1);
-            int j1 = std::max(0, j - 1);
-            int j2 = std::min(h - 1, j + 1);
-            uint8_t px_l = texels[i1 + w * j]; // in [0,2^16-1]
-            uint8_t px_r = texels[i2 + w * j]; // in [0,2^16-1]
-            uint8_t px_b = texels[i + w * j1]; // in [0,2^16-1]
-            uint8_t px_t = texels[i + w * j2]; // in [0,2^16-1]
-            float z_l = (float)px_l / 255.0f; // in [0, 1]
-            float z_r = (float)px_r / 255.0f; // in [0, 1]
-            float z_b = (float)px_b / 255.0f; // in [0, 1]
-            float z_t = (float)px_t / 255.0f; // in [0, 1]
-            float slope_x = (float)w * 0.5f * (z_r - z_l);
-            float slope_y = (float)h * 0.5f * (z_t - z_b);
-            
-            smap[    2 * (i + w * j)] = slope_x;
-            smap[1 + 2 * (i + w * j)] = slope_y;
-            
-        }
-
-    if (glIsTexture(g_gl.textures[smapID]))
-        glDeleteTextures(1, &g_gl.textures[smapID]);
-
-    glGenTextures(1, &g_gl.textures[smapID]);
-    glActiveTexture(GL_TEXTURE0 + smapID);
-    glBindTexture(GL_TEXTURE_2D, g_gl.textures[smapID]);
-    glTexStorage2D(GL_TEXTURE_2D, mipcnt, GL_RG32F, w, h);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RG, GL_FLOAT, &smap[0]);
-
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D,
-        GL_TEXTURE_MIN_FILTER,
-        GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D,
-        GL_TEXTURE_WRAP_S,
-        GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D,
-        GL_TEXTURE_WRAP_T,
-        GL_REPEAT);
     glActiveTexture(GL_TEXTURE0);
 }
 
@@ -1363,7 +1247,7 @@ float fBm(const glm::vec2 pos, const int octaveCount, float lacunarity, float ga
 }
 
 
-float calcfBmNoise(glm::vec3 pos, float exp){
+float calcfBmNoise(glm::vec2 pos, float exp){
     float e = 0.f;
     float amp = 0.f;
     if(!automatic_octaves==true)
@@ -1387,7 +1271,7 @@ float calcfBmNoise(glm::vec3 pos, float exp){
     return e;
 }
 
-float calcSurfaceNoise(glm::vec3 pos, float exp){
+float calcSurfaceNoise(glm::vec2 pos, float exp){
     float e = 0.f;
     float amp = 0.f;
     if(!automatic_octaves==true)
@@ -1395,6 +1279,8 @@ float calcSurfaceNoise(glm::vec3 pos, float exp){
             e = Simplex::ridgedMF(wavelength*pos, ridgeOffset, octaves_ter, lacunarity_ter, gain_ter);
         else if(noise == IQFBM)
             e = Simplex::iqfBm(wavelength*pos, octaves_ter, lacunarity_ter, gain_ter);
+        else if(noise == FBM)
+            e = Simplex::fBm(wavelength*pos, octaves_ter, lacunarity_ter, gain_ter);
         else if(noise == WORLEYFBM)
             e = Simplex::worleyfBm(wavelength*pos, octaves_ter, lacunarity_ter, gain_ter);
     else{
@@ -1427,8 +1313,8 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     float min = 1000000000000000000000000000000000000000000000000000000.f;
     float scale = 2.f; // Escala do FBM
 
-    int w = 1280;
-    int h = 1280;
+    int w = 3201;
+    int h = 3201;
     
 
     int mipcnt = djgt__mipcnt(w, h, 1);
@@ -1447,71 +1333,32 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     Simplex::seed(seeds);
     for (int j = 0; j < h; j++){
         for (int i = 0; i < w; i++) {
-            float zf = -1.5f;
+            float h = -1.5f;
             //glm::vec2 pos = glm::vec2(float(i*tamAmostra), float(j*tamAmostra));
-            glm::vec3 pos = glm::vec3(float(i*tamAmostra), zf, float(j*tamAmostra));
+            glm::vec2 pos = glm::vec2(float(i*tamAmostra), float(j*tamAmostra));
 
             if(mountain_dunes != PLANICE){
                 float sn = calcSurfaceNoise(pos, elevacao);
                 if(mountain_dunes == MONTANHA)
-                    zf = sn;
+                    h = sn;
 
                 else if(mountain_dunes == DUNA)
-                    zf = 1.f - sn;
+                    h = 1.f - sn;
             }
             else
-                zf = calcSurfaceNoise(pos,elevacao);
+                h = calcfBmNoise(pos,elevacao);
             
-            pos = glm::vec3(float(i*tamAmostra), zf, float(j*tamAmostra));
+            pos = glm::vec3(float(i*tamAmostra), h, float(j*tamAmostra));
+            int trunc = h*1000000;
+            h = float(trunc)/1000000.f;
 
-
-            //LOG("(x:%f, y:%f), ", pos.x, pos.y);
-
-            //Superfície mais montanhosa
-
-            //zf = Simplex::ridgedNoise(frequencia*pos)*1.01f;
-            //zf = 1.f-Simplex::worleyfBm(frequencia*pos);
-            //Superfície mais dunesca
-            //zf = 1.f - Simplex::ridgedNoise(frequencia*pos);
+            if(h<min)
+                min = h;
             
-
-            //zf *= Simplex::ridgedMF(frequencia*pos, ridge, octaves, lacunarity, gain);
-            //glm::vec2 pos = glm::vec2(float(i), float(j));
-           
+            if(h>max)
+                max = h;
             
-            //glm::vec3 pos3 = glm::vec3(x,zf,y);
-            //zf = 1-Simplex::ridgedNoise(pos3);
-            
-          float x = i * scale;
-            float y = j * scale;
-            glm::vec2 pos22 = glm::vec2(x,y); 
-            //zf = Simplex::worleyfBm(pos3);// 
-            //zf = fBm(pos, 32, 3.01f, 3.01f);
-
-
-
-            //glm::vec3 pos3 = glm::vec3(x,-zf,y);
-             //= Simplex::iqfBm(pos, 32, 3.01f, 3.01f);
-            //zf  =    1.f * Simplex::worleyfBm(1.f * pos)
-            //     +  0.5f * Simplex::worleyfBm(2.f * pos);
-                     //+ 0.25 * Simplex::iqfBm(4.f * pos);
-            //zf = zf / (1.f + 0.5f);// + 0.25);
-            //zf = pow(zf, 2.f);
-            //pos3 = glm::vec3(x,zf,y);
-            //zf -= Simplex::iqfBm(pos3);*/
-            
-/*             if(false){
-            glm::vec4 vector4 = Simplex::dfBm(pos3, 16, 0.98f, 0.71f);
-            zf = vector4.x;
-                LOG("simplex");
-            } */
-            if(zf<min)
-                min = zf;
-            
-            if(zf>max)
-                max = zf;
-            
-            zf_arr[i + w*j] = zf;
+            zf_arr[i + w*j] = h;
         }
     }
     LOG("(min:%f, max:%f), \n", min, max);
@@ -1520,42 +1367,33 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     
     for (int j = 0; j < h; ++j){
         for (int i = 0; i < w; ++i) {
-            float zf = zf_arr[i + w*j];
-
-            zf_arr[i + w*j] = (zf - min)/(max-min);
-            /* if(zf_arr[i + w*j]<min2)
+            float h = zf_arr[i + w*j];
+            
+            zf_arr[i + w*j] = (h - min)/(max-min);
+            if(zf_arr[i + w*j]<min2)
                 min2 = zf_arr[i + w*j];
                     
             if(zf_arr[i + w*j]>max2)
-                max2 = zf_arr[i + w*j]; */
+                max2 = zf_arr[i + w*j];
         }
     }
     LOG("(min2:%f, max2:%f), \n", min2, max2);
     
     for (int j = 0; j < h; ++j){
-        for (int i = 0; i < w; ++i) {
-            /*
-            // Implementação original
-            uint16_t z = texels[i + w * j]; // in [0,2^16-1]
-            float zf = float(z) / float((1 << 16) - 1);
-            uint16_t z2 = zf * zf * ((1 << 16) - 1);
-            */
-  
-            float zf = zf_arr[i + w*j];
-            uint16_t z = uint16_t(zf * ((1 << 16) - 1));
-            uint16_t z2 = zf * zf * ((1 << 16) - 1);
-            texels2[i + w * j] = z;
+        for (int i = 0; i < w; ++i) {  
+            float h = zf_arr[i + w*j];
+            uint16_t h16 = uint16_t(h * ((1 << 16) - 1));
+            uint16_t h2 = h * h * ((1 << 16) - 1);
+            texels2[i + w * j] = h16;
                         
             // Implementação original
-            dmap[    2 * (i + w * j)] = z;
-            dmap[1 + 2 * (i + w * j)] = z2;
+            dmap[    2 * (i + w * j)] = h16;
+            dmap[1 + 2 * (i + w * j)] = h2;
         }        
     }
     
     // Load nmap from dmap
-    //Método original, descomentar 
-    //LoadNmapTexture16(smapID, djgt);
-    LoadNmapTexture16(smapID, djgt, texels2, normals);
+    LoadNmapTexture16(smapID, texels2, w,h);
 
     glActiveTexture(GL_TEXTURE0 + dmapID);
     if (glIsTexture(g_gl.textures[dmapID]))
@@ -2784,7 +2622,7 @@ void renderViewer()
                 if (g_camera.zNear >= g_camera.zFar)
                     g_camera.zNear = g_camera.zFar - 0.01f;
             }
-            if (ImGui::SliderFloat("zFar", &g_camera.zFar, 16.f, 4096.f)) {
+            if (ImGui::SliderFloat("zFar", &g_camera.zFar, 16.f, 32000.f)) {
                 if (g_camera.zFar <= g_camera.zNear)
                     g_camera.zFar = g_camera.zNear + 0.01f;
             }
@@ -2979,14 +2817,11 @@ void renderViewer()
                 "Plain",
                 "Dunes"
             };
-            const char* efBmNoise[] = {
+            const char* eSurfaceNoise[] = {
                 "fBm",
                 "IQfBm",
-            };
-            const char* eSurfaceNoise[] = {
-                "IQfBm",
+                "ridgedMF",
                 "WorleyfBm",
-                "ridgedMF"
             };
 
             if (ImGui::SliderInt("Elevation", &elevacao, -1, 7)){
