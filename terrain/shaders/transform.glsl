@@ -1,6 +1,3 @@
-#version 430 core
-#define M_PI 3.14159265358979323844f
-
 struct InstancedNoise
 {
   vec3 vertex;
@@ -58,10 +55,6 @@ in vec3 vertex;
 
 
 void main() {
-
-
-  vec3 sphereCoord = mix(vertex, normalize(vertex)*radius, 1)*scale;
-
-  outValue.vertex = sphereCoord;
-  outValue.noiseValue = fbm(sphereCoord,16, 1.f, .93753125f, .5f, 1);
+  outValue.vertex = vertex;
+  outValue.noiseValue = fbm(vertex, 16, 1.f, .93753125f, .5f, 1);
 }

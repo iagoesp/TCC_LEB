@@ -31,76 +31,41 @@ uniform float u_MinLodVariance;
  *
  */
 
+float sizeFbm = 0.25f;
+float hash(float n) { return fract(sin(n) * 1e4); }
+float hash(vec2 p) { return fract(1e4 * sin(17.0 * p.x + p.y * 0.1) * (0.1 + abs(sin(p.y * 13.0 + p.x)))); }
 
-float hash1( float n )
-{
-    return fract( n*17.0f*fract( n*0.3183099f) );
+float noise(vec3 x) {
+	const vec3 step = vec3(110, 241, 171);
+
+	vec3 i = floor(x);
+	vec3 f = fract(x);
+
+	// For performance, compute the base input to a 1D hash from the integer part of the argument and the
+	// incremental change to the 1D based on the 3D -> 1D wrapping
+    float n = dot(i, step);
+
+	vec3 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(mix( hash(n + dot(step, vec3(0, 0, 0))), hash(n + dot(step, vec3(1, 0, 0))), u.x),
+                   mix( hash(n + dot(step, vec3(0, 1, 0))), hash(n + dot(step, vec3(1, 1, 0))), u.x), u.y),
+               mix(mix( hash(n + dot(step, vec3(0, 0, 1))), hash(n + dot(step, vec3(1, 0, 1))), u.x),
+                   mix( hash(n + dot(step, vec3(0, 1, 1))), hash(n + dot(step, vec3(1, 1, 1))), u.x), u.y), u.z);
 }
 
-vec4 noised( vec3 x )
-{
-    vec3 p = floor(x);
-    vec3 w = fract(x);
-    #if 1
-    vec3 u = w*w*w*(w*(w*6.0f-15.0f)+10.0f);
-    vec3 du = 30.0f*w*w*(w*(w-2.0f)+1.0f);
-    #else
-    vec3 u = w*w*(3.0f-2.0f*w);
-    vec3 du = 6.0f*w*(1.0f-w);
-    #endif
-
-    float n = p.x + 317.0f*p.y + 157.0f*p.z;
-    
-    float a = hash1(n+0.0f);
-    float b = hash1(n+1.0f);
-    float c = hash1(n+317.0f);
-    float d = hash1(n+318.0f);
-    float e = hash1(n+157.0f);
-	float f = hash1(n+158.0f);
-    float g = hash1(n+474.0f);
-    float h = hash1(n+475.0f);
-
-    float k0 =   a;
-    float k1 =   b - a;
-    float k2 =   c - a;
-    float k3 =   e - a;
-    float k4 =   a - b - c + d;
-    float k5 =   a - c - e + g;
-    float k6 =   a - b - e + f;
-    float k7 = - a + b + c - d + e - f - g + h;
-
-    return vec4( -1.0f+2.0f*(k0 + k1*u.x + k2*u.y + k3*u.z + k4*u.x*u.y + k5*u.y*u.z + k6*u.z*u.x + k7*u.x*u.y*u.z), 
-                      2.0f* du * vec3( k1 + k4*u.y + k6*u.z + k7*u.y*u.z,
-                                      k2 + k5*u.z + k4*u.x + k7*u.z*u.x,
-                                      k3 + k6*u.x + k5*u.y + k7*u.x*u.y ) );
-}
 const mat3 m3  = mat3( 0.00,  0.80,  0.60,
                       -0.80,  0.36, -0.48,
                       -0.60, -0.48,  0.64 );
-const mat3 m3i = mat3( 0.00, -0.80, -0.60,
-                       0.80,  0.36, -0.48,
-                       0.60, -0.48,  0.64 );
-vec4 fbmd( vec3 x, int octaves )
-{
-    float f = 0.41f;  // could be 2.0
-    float s = 0.49f;  // could be 0.5
-    float a = 0.0f;
-    float b = 0.5f;
-    vec3  d = vec3(0.0);
-    mat3  m = mat3(1.0,0.0,0.0,
-    0.0,1.0,0.0,
-    0.0,0.0,1.0);
-    for( int i=0; i < octaves; i++ )
-    {
-        vec4 n = noised(x);
-        a += b*n.x;          // accumulate values
-        d += b*m*vec3(n.y,n.z,n.w);      // accumulate derivatives
-        b *= s;
-        x = f*m3*x;
-        m = f*m3i*m;
-    }
-    return vec4( a, d );
+
+float fbm( vec3 p ){
+    float f = 0.1f;
+    f += 0.5000*noise( p ); p = m3*p*2.02;
+    f += 0.2500*noise( p ); p = m3*p*2.03;
+    f += 0.1250*noise( p ); p = m3*p*2.01;
+    f += 0.0625*noise( p );
+
+    return f/0.9375;
 }
+
 vec4[3] DecodeTriangleVertices(in const cbt_Node node)
 {
     vec3 xPos = vec3(0, 0, 1), yPos = vec3(1, 0, 0);
@@ -109,17 +74,18 @@ vec4[3] DecodeTriangleVertices(in const cbt_Node node)
     vec4 p2 = vec4(pos[0][1], pos[1][1], 0.0, 1.0);
     vec4 p3 = vec4(pos[0][2], pos[1][2], 0.0, 1.0);
 
+    
+
 #if FLAG_DISPLACE
     p1.z = u_DmapFactor * texture(u_DmapSampler, p1.xy).r;
     p2.z = u_DmapFactor * texture(u_DmapSampler, p2.xy).r;
     p3.z = u_DmapFactor * texture(u_DmapSampler, p3.xy).r;
-    /*
-    vec4 p1_fbm = u_DmapFactor * fbmd(p1.xyz, 8);
-    vec4 p2_fbm = u_DmapFactor * fbmd(p2.xyz, 8);
-    vec4 p3_fbm = u_DmapFactor * fbmd(p3.xyz, 8);
-    p1.z += p1_fbm.z;
-    p2.z += p2_fbm.z;
-    p3.z += p3_fbm.z;*/
+/*     
+    p1.z += u_DmapFactor * fbm(p1.xyz*sizeFbm)*sizeFbm;
+    p2.z += u_DmapFactor * fbm(p2.xyz*sizeFbm)*sizeFbm;
+    p3.z += u_DmapFactor * fbm(p3.xyz*sizeFbm)*sizeFbm; */
+    
+
 #endif
 
     return vec4[3](p1, p2, p3);
@@ -347,6 +313,7 @@ VertexAttribute TessellateTriangle(
 
 #if FLAG_DISPLACE
     position.z = u_DmapFactor * textureLod(u_DmapSampler, texCoord, 0.0).r;
+    //position.z += u_DmapFactor * fbm(position.xyz*sizeFbm)*sizeFbm;
 #endif
 
     return VertexAttribute(position, texCoord);
@@ -373,7 +340,7 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos)
 #endif
 
 #if FLAG_DISPLACE
-#if 0
+#if 1
     // slope
     vec2 smap = texture(u_SmapSampler, texCoord).rg * u_DmapFactor * 0.03;
     vec3 n = normalize(vec3(-smap, 1));
@@ -401,9 +368,23 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos)
     return vec4(mix(vec3(albedo * d / 3.14159), vec3(0.5), 1.0 - exp2(-z)), 1);
 
 #elif SHADING_DIFFUSE
+    float a = 0.09f;
+    float b = 0.00;
+    float c = 0.00;
+    float d1 = 0.00f;
+    float e = 0.00f;
+    float f = 0.00f;
+    float m = a * fbm( 1.f * worldPos*0.1f  )
+           + b * fbm( 2.f * worldPos *0.1f )
+           + c * fbm( 4.f * worldPos *0.1f )
+           + d1 * fbm( 8.f * worldPos *0.1f )
+           + e * fbm(16.f * worldPos *0.1f)
+           + f * fbm(32.f * worldPos *0.1f);
+    m = n.y * m / (a + b + c + d1 + e + f);
     vec3 wi = normalize(vec3(1, 1, 1));
     float d = dot(wi, n) * 0.5 + 0.5;
     vec3 albedo = vec3(252, 197, 150) / 255.0f;
+
     vec3 camPos = u_CameraMatrix[3].xyz;
     vec3 extinction;
     vec3 inscatter = inScattering(camPos.zxy + earthPos,

@@ -22,6 +22,8 @@
 #include <fstream>
 #include <cstdlib>
 #include <ctime>
+#include <thread>
+
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -62,6 +64,8 @@
 // Global Variables
 //
 ////////////////////////////////////////////////////////////////////////////////
+
+#define SIZE_TERRAIN 50000
 
 // -----------------------------------------------------------------------------
 // Framebuffer Manager
@@ -129,35 +133,32 @@ void updateCameraMatrix()
 
 enum {
     MONTANHA,
-    PLANICE,
-    DUNA
+    INVERSO
 };
 enum {
+    RIDGED,
     FBM,
-    IQFBM,
-    RIDGEDMF,
-    WORLEYFBM
+    RIDGEDFBM,
 };
 
-int noise = IQFBM;
-bool automatic_octaves = false;
+int noise = RIDGEDFBM;
 
-int elevacao = 0;
-int mountain_dunes = PLANICE;
+int mountain_inverse = MONTANHA;
 
-int size_ter = 1280;
-int amostra_ter = 15;
+int scaleTER = 100;
 int seeds = 1000;
 
-float ridgeOffset = 1.0f;
 
-float wavelength = 1.4f;
-int octaves_ter = 4;
-float lacunarity_ter = 2.0f;
-float gain_ter = 0.5f;
+int getValley = 0;
+float ridgeOffset = 2.0f;
+float wavelengthRMF = 1.4f;
+int octavesRMF = 8;
+float lacunarityRMF = 2.0f;
+float gainRMF = 0.5f;
 
-float wavelengthFBM = 1.42f;
-int octavesFBM = 4;
+int getValleyFBM = 1;
+float wavelengthFBM = 1.0f;
+int octavesFBM = 8;
 float lacunarityFBM = 2.0f;
 float gainFBM = 0.5f;
 
@@ -183,7 +184,7 @@ struct TerrainManager {
 } g_terrain = {
     {true, true, false, false, true},
     {std::string(PATH_TO_ASSET_DIRECTORY "./kauai.png"),
-     52660.0f, 52660.0f, 0.0f, 2500.0f,
+     SIZE_TERRAIN,SIZE_TERRAIN, 0.0f, 1500.0f,
      1.0f},
     METHOD_CS,
     SHADING_DIFFUSE,
@@ -192,7 +193,7 @@ struct TerrainManager {
     0.1f,
     25,
     0,
-    52660.0f
+    SIZE_TERRAIN
 };
 
 //grid_t * grid = create_grid(g_terrain.dmap.width, g_terrain.dmap.height);
@@ -288,6 +289,7 @@ enum {
     BUFFER_SPHERE_VERTICES,
     BUFFER_SPHERE_INDEXES,
     BUFFER_CBT_NODE_COUNT,
+    //BUFFER_TRANSFORM_FEEDBACK,
 
     BUFFER_COUNT
 };
@@ -315,6 +317,7 @@ enum {
     PROGRAM_BATCH,
     PROGRAM_SKY,
     PROGRAM_CBT_NODE_COUNT,
+    //PROGRAM_TRANSFORM_FEEDBACK,
 
     PROGRAM_COUNT
 };
@@ -639,7 +642,7 @@ bool LoadViewerProgram()
     GLuint *program = &g_gl.programs[PROGRAM_VIEWER];
     char buf[1024];
 
-    LOG("Loading {Viewer-Program}\n");
+    //LOG("Loading {Viewer-Program}\n");
     if (g_framebuffer.aa >= AA_MSAA2 && g_framebuffer.aa <= AA_MSAA16)
         djgp_push_string(djp, "#define MSAA_FACTOR %i\n", 1 << g_framebuffer.aa);
     switch (g_camera.tonemap) {
@@ -662,7 +665,7 @@ bool LoadViewerProgram()
     djgp_push_file(djp, PATH_TO_SRC_DIRECTORY "./terrain/shaders/Viewer.glsl");
 
     if (!djgp_to_gl(djp, 450, false, true, program)) {
-        LOG("=> Failure <=\n");
+        //LOG("=> Failure <=\n");
         djgp_release(djp);
 
         return false;
@@ -685,11 +688,15 @@ bool LoadViewerProgram()
  * This program is responsible for updating and rendering the terrain.
  *
  */
+
+
 bool LoadTerrainProgram(GLuint *glp, const char *flag, GLuint uniformOffset)
 {
+    //LOG("%s\n", "LoadTerrainProgram");
+
     djg_program *djp = djgp_create();
 
-    LOG("Loading {Terrain-Program}\n");
+    //LOG("Loading {Terrain-Program}\n");
     if (!g_terrain.flags.freeze)
         djgp_push_string(djp, flag);
     if (g_terrain.method == METHOD_MS) {
@@ -809,6 +816,8 @@ bool LoadTerrainProgram(GLuint *glp, const char *flag, GLuint uniformOffset)
 bool LoadTerrainPrograms()
 {
     bool v = true;
+    //LOG("%s\n", "LoadTerrainPrograms");
+
 
     if (v) v = v && LoadTerrainProgram(&g_gl.programs[PROGRAM_SPLIT],
                                        "#define FLAG_SPLIT 1\n",
@@ -823,6 +832,27 @@ bool LoadTerrainPrograms()
     return v;
 }
 
+/*
+bool LoadTransformFeedbackProgram()
+{
+    LOG("%s\n", "Transform Feedback");
+
+    djg_program *djp = djgp_create();
+    GLuint *glp = &g_gl.programs[PROGRAM_TRANSFORM_FEEDBACK];
+
+    djgp_push_file(djp, PATH_TO_SRC_DIRECTORY "./terrain/shaders/transform.glsl");
+
+    if (!djgp_to_gl(djp, 450, false, true, glp)) {
+        djgp_release(djp);
+
+        return false;
+    }
+    djgp_release(djp);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BUFFER_TRANSFORM_FEEDBACK, g_gl.buffers[BUFFER_TRANSFORM_FEEDBACK]);
+    glUseProgram(g_gl.programs[PROGRAM_LEB_REDUCTION_PREPASS]);
+    
+    return (glGetError() == GL_NO_ERROR);
+}*/
 
 // -----------------------------------------------------------------------------
 /** Load the Reduction Program
@@ -833,10 +863,12 @@ bool LoadTerrainPrograms()
  */
 bool LoadLebReductionProgram()
 {
+    //LOG("%s\n", "LoadLebReductionProgram");
+
     djg_program *djp = djgp_create();
     GLuint *glp = &g_gl.programs[PROGRAM_LEB_REDUCTION];
 
-    LOG("Loading {Reduction-Program}\n");
+    //LOG("Loading {Reduction-Program}\n");
     djgp_push_string(djp, "#define CBT_HEAP_BUFFER_BINDING %i\n", BUFFER_LEB);
     djgp_push_file(djp, PATH_TO_SRC_DIRECTORY "./submodules/libcbt/glsl/cbt.glsl");
     djgp_push_file(djp, PATH_TO_SRC_DIRECTORY "./submodules/libcbt/glsl/cbt_SumReduction.glsl");
@@ -854,10 +886,12 @@ bool LoadLebReductionProgram()
 
 bool LoadLebReductionPrepassProgram()
 {
+    //LOG("%s\n", "LoadLebReductionPrepassProgram");
+
     djg_program *djp = djgp_create();
     GLuint *glp = &g_gl.programs[PROGRAM_LEB_REDUCTION_PREPASS];
 
-    LOG("Loading {Reduction-Prepass-Program}\n");
+    //LOG("Loading {Reduction-Prepass-Program}\n");
     djgp_push_string(djp, "#define CBT_HEAP_BUFFER_BINDING %i\n", BUFFER_LEB);
     djgp_push_file(djp, PATH_TO_SRC_DIRECTORY "./submodules/libcbt/glsl/cbt.glsl");
     djgp_push_file(djp, PATH_TO_SRC_DIRECTORY "./submodules/libcbt/glsl/cbt_SumReductionPrepass.glsl");
@@ -880,10 +914,11 @@ bool LoadLebReductionPrepassProgram()
  */
 bool LoadBatchProgram()
 {
+    
     djg_program *djp = djgp_create();
     GLuint *glp = &g_gl.programs[PROGRAM_BATCH];
 
-    LOG("Loading {Batch-Program}\n");
+    //LOG("Loading {Batch-Program}\n");
     if (GLAD_GL_ARB_shader_atomic_counter_ops) {
         djgp_push_string(djp, "#extension GL_ARB_shader_atomic_counter_ops : require\n");
         djgp_push_string(djp, "#define ATOMIC_COUNTER_EXCHANGE_ARB 1\n");
@@ -934,7 +969,7 @@ bool LoadTopViewProgram()
     djg_program *djp = djgp_create();
     GLuint *glp = &g_gl.programs[PROGRAM_TOPVIEW];
 
-    LOG("Loading {Top-View-Program}\n");
+    //LOG("Loading {Top-View-Program}\n");
     if (g_terrain.flags.displace)
         djgp_push_string(djp, "#define FLAG_DISPLACE 1\n");
     djgp_push_string(djp, "#define TERRAIN_PATCH_SUBD_LEVEL %i\n", g_terrain.gpuSubd);
@@ -977,7 +1012,7 @@ bool LoadSkyProgram()
     djg_program *djp = djgp_create();
     GLuint *glp = &g_gl.programs[PROGRAM_SKY];
 
-    LOG("Loading {Sky-Program}\n");
+    //LOG("Loading {Sky-Program}\n");
     switch (g_camera.projection) {
     case PROJECTION_RECTILINEAR:
         djgp_push_string(djp, "#define PROJECTION_RECTILINEAR\n");
@@ -1029,7 +1064,7 @@ bool LoadCbtNodeCountProgram()
     djg_program *djp = djgp_create();
     GLuint *glp = &g_gl.programs[PROGRAM_CBT_NODE_COUNT];
 
-    LOG("Loading {Cbt-Node-Count-Program}\n");
+    //LOG("Loading {Cbt-Node-Count-Program}\n");
     djgp_push_string(djp, "#define CBT_NODE_COUNT_BUFFER_BINDING %i\n", BUFFER_CBT_NODE_COUNT);
     djgp_push_string(djp, "#define CBT_HEAP_BUFFER_BINDING %i\n", BUFFER_LEB);
     djgp_push_string(djp, "#define CBT_READ_ONLY\n");
@@ -1055,6 +1090,8 @@ bool LoadCbtNodeCountProgram()
 bool LoadPrograms()
 {
     bool v = true;
+    //LOG("%s\n", "*LoadPrograms");
+
 
     if (v) v &= LoadViewerProgram();
     if (v) v &= LoadTerrainPrograms();
@@ -1084,6 +1121,8 @@ bool LoadPrograms()
  */
 bool LoadSceneFramebufferTexture()
 {
+    //LOG("%s\n", "LoadSceneFramebufferTexture");
+
     if (glIsTexture(g_gl.textures[TEXTURE_CBUF]))
         glDeleteTextures(1, &g_gl.textures[TEXTURE_CBUF]);
     if (glIsTexture(g_gl.textures[TEXTURE_ZBUF]))
@@ -1093,7 +1132,7 @@ bool LoadSceneFramebufferTexture()
 
     switch (g_framebuffer.aa) {
     case AA_NONE:
-        LOG("Loading {Z-Buffer-Framebuffer-Texture}\n");
+        //LOG("Loading {Z-Buffer-Framebuffer-Texture}\n");
         glActiveTexture(GL_TEXTURE0 + TEXTURE_ZBUF);
         glBindTexture(GL_TEXTURE_2D, g_gl.textures[TEXTURE_ZBUF]);
         glTexStorage2D(GL_TEXTURE_2D,
@@ -1104,7 +1143,7 @@ bool LoadSceneFramebufferTexture()
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-        LOG("Loading {Color-Buffer-Framebuffer-Texture}\n");
+        //LOG("Loading {Color-Buffer-Framebuffer-Texture}\n");
         glActiveTexture(GL_TEXTURE0 + TEXTURE_CBUF);
         glBindTexture(GL_TEXTURE_2D, g_gl.textures[TEXTURE_CBUF]);
         glTexStorage2D(GL_TEXTURE_2D,
@@ -1129,10 +1168,10 @@ bool LoadSceneFramebufferTexture()
         maxSamples = maxSamplesDepth < maxSamples ? maxSamplesDepth : maxSamples;
 
         if (samples > maxSamples) {
-            LOG("note: MSAA is %ix\n", maxSamples);
+            //LOG("note: MSAA is %ix\n", maxSamples);
             samples = maxSamples;
         }
-        LOG("Loading {Scene-MSAA-Z-Framebuffer-Texture}\n");
+        //LOG("Loading {Scene-MSAA-Z-Framebuffer-Texture}\n");
         glActiveTexture(GL_TEXTURE0 + TEXTURE_ZBUF);
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, g_gl.textures[TEXTURE_ZBUF]);
         glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE,
@@ -1142,7 +1181,7 @@ bool LoadSceneFramebufferTexture()
                                   g_framebuffer.h,
                                   g_framebuffer.msaa.fixed);
 
-        LOG("Loading {Scene-MSAA-RGBA-Framebuffer-Texture}\n");
+        //LOG("Loading {Scene-MSAA-RGBA-Framebuffer-Texture}\n");
         glActiveTexture(GL_TEXTURE0 + TEXTURE_CBUF);
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, g_gl.textures[TEXTURE_CBUF]);
         glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE,
@@ -1247,65 +1286,81 @@ float fBm(const glm::vec2 pos, const int octaveCount, float lacunarity, float ga
 }
 
 
-float calcfBmNoise(glm::vec2 pos, float exp){
-    float e = 0.f;
-    float amp = 0.f;
-    if(!automatic_octaves==true)
-        if(true)
-            e = Simplex::fBm(wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM);
-        else
-            e = Simplex::iqfBm(wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM);
-    else{
-        for(int i = 0; i < octavesFBM; i++){
-            float amp_parcial = 0.5f / float(pow(2,i));
-            if(true)
-                e += amp_parcial * Simplex::fBm(wavelengthFBM*pos);
-            else
-                e += amp_parcial * Simplex::iqfBm(pos);
-            amp += amp_parcial;
-        }
-        e = e / amp;
-    }
-    if(exp > 0)
-        e = pow(e, exp);
-    return e;
+float calcfBmNoise(glm::vec3 pos){
+    float noiseFBM = 0.f;
+    float f = scaleTER*getValleyFBM;
+    if(getValleyFBM == 3)
+        f = scaleTER*4;
+    if(getValleyFBM == 4)
+        f = scaleTER*8;
+    noiseFBM = Simplex::fBm(scaleTER*wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM)/f;
+    return noiseFBM;
 }
 
-float calcSurfaceNoise(glm::vec2 pos, float exp){
-    float e = 0.f;
-    float amp = 0.f;
-    if(!automatic_octaves==true)
-        if(noise == RIDGEDMF)
-            e = Simplex::ridgedMF(wavelength*pos, ridgeOffset, octaves_ter, lacunarity_ter, gain_ter);
-        else if(noise == IQFBM)
-            e = Simplex::iqfBm(wavelength*pos, octaves_ter, lacunarity_ter, gain_ter);
-        else if(noise == FBM)
-            e = Simplex::fBm(wavelength*pos, octaves_ter, lacunarity_ter, gain_ter);
-        else if(noise == WORLEYFBM)
-            e = Simplex::worleyfBm(wavelength*pos, octaves_ter, lacunarity_ter, gain_ter);
-    else{
-        for(int i = 0; i < octaves_ter; i++){
-            float amp_parcial = 1.f / float(pow(2,i));
-            if(noise == RIDGEDMF)
-                e += amp_parcial * Simplex::ridgedMF((1.f * float(pow(2,i))) * pos);
-            else if(noise == IQFBM)
-                e += amp_parcial * Simplex::iqfBm((1.f * float(pow(2,i))) * pos);
-            else if(noise == WORLEYFBM)
-                e += amp_parcial * Simplex::worleyfBm((1.f * float(pow(2,i))) * pos);
-            amp += amp_parcial;
-        }
-        e = e / amp;
+float clamp(float n, float lower, float upper) {
+  return std::max(lower, std::min(n, upper));
+}
+
+float calcSurfaceNoise(glm::vec3 pos){
+    float noiseRMF = 0.f;
+    float noiseFBM = 0.f;
+
+    float fBm_Ampscale = pow(gainFBM, octavesRMF);
+    float fBm_UVScale  = pow(lacunarityFBM, octavesRMF);
+    if(noise == RIDGED || noise == RIDGEDFBM){
+        noiseRMF = Simplex::ridgedMF(wavelengthRMF*pos, ridgeOffset, octavesRMF, lacunarityRMF, gainRMF);
+        if(getValley > 1)
+            noiseRMF = pow(noiseRMF, getValley);
+
+        if(noise == RIDGED)
+            return noiseRMF;
+        
+        noiseFBM = Simplex::fBm(wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM);
+
+        if(getValleyFBM > 1)
+            noiseFBM = pow(noiseFBM, getValleyFBM);
+        return glm::max(noiseFBM,noiseFBM + noiseRMF*clamp(noiseFBM, 0,1));
     }
-    if(exp > 0)
-        e = pow(e, exp);
-    return e;
+ 
+    noiseFBM = Simplex::fBm(wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM);
+
+    if(getValleyFBM > 1)
+        noiseFBM = pow(noiseFBM, getValleyFBM);
+
+    return noiseFBM;
+}
+
+void update(int h, int w, int size, float tamAmostra, float *zf_arr){
+     for (int j = h; j < h + size; j++){
+        for (int i = w; i < w + size; i++) {
+            float h = -2000.5f;
+            //glm::vec2 pos = glm::vec2(float(i*tamAmostra), float(j*tamAmostra));
+            glm::vec3 pos = glm::vec3(float(i*tamAmostra), h, float(j*tamAmostra));
+
+            float sn = calcSurfaceNoise(pos);
+            if(mountain_inverse == MONTANHA)
+                h = sn;
+
+            else if(mountain_inverse == INVERSO)
+                h = 1.f - sn;
+            
+            h += calcfBmNoise(pos);
+            
+            int trunc = h*1000000;
+            h = float(trunc)/1000000.f;
+
+            h -= 100.f;
+            
+            zf_arr[i + w*j] = h;
+        }
+    }
 }
 
 bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
 {
     djg_texture *djgt = djgt_create(1);
 
-    LOG("Loading {Dmap-Texture}\n");
+    //LOG("Loading {Dmap-Texture}\n");
     djgt_push_image_u16(djgt, pathToFile, 1);
 
     // Variaveis inseridas para o projeto
@@ -1313,9 +1368,12 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     float min = 1000000000000000000000000000000000000000000000000000000.f;
     float scale = 2.f; // Escala do FBM
 
-    int w = 3201;
-    int h = 3201;
-    
+/*     int w = g_terrain.dmap.width/10;
+    int h = g_terrain.dmap.height/10; */
+    int size = 1024;
+    int w = size*4;
+    int h = w;
+    pthread_t threads[4];
 
     int mipcnt = djgt__mipcnt(w, h, 1);
     std::vector<uint16_t> dmap(w * h * 2);
@@ -1329,39 +1387,22 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     float lacunarity = 2.0f;
     float gain = .66f;
     
-    float tamAmostra = w / (float)(pow(10,amostra_ter/2.5f));
+    float tamAmostra = w / (float)(pow(10,scaleTER/2.5f));
+    tamAmostra = g_terrain.dmap.scale/(float)scaleTER;//w / (float)(pow(10,scaleTER/2.5f));
+    //LOG("Loading --------------tamAmostra%f\n", tamAmostra);
+    std::vector<glm::vec3> positions(w*h);
     Simplex::seed(seeds);
     for (int j = 0; j < h; j++){
         for (int i = 0; i < w; i++) {
-            float h = -1.5f;
-            //glm::vec2 pos = glm::vec2(float(i*tamAmostra), float(j*tamAmostra));
-            glm::vec2 pos = glm::vec2(float(i*tamAmostra), float(j*tamAmostra));
-
-            if(mountain_dunes != PLANICE){
-                float sn = calcSurfaceNoise(pos, elevacao);
-                if(mountain_dunes == MONTANHA)
-                    h = sn;
-
-                else if(mountain_dunes == DUNA)
-                    h = 1.f - sn;
-            }
-            else
-                h = calcfBmNoise(pos,elevacao);
-            
-            pos = glm::vec3(float(i*tamAmostra), h, float(j*tamAmostra));
-            int trunc = h*1000000;
-            h = float(trunc)/1000000.f;
-
-            if(h<min)
-                min = h;
-            
-            if(h>max)
-                max = h;
-            
-            zf_arr[i + w*j] = h;
+            glm::vec3 pos = glm::vec3(float(i*tamAmostra), h, float(j*tamAmostra));
+            positions.push_back(pos);
         }
     }
-    LOG("(min:%f, max:%f), \n", min, max);
+    std::thread th1(update, size*0, size*0, size, tamAmostra, zf_arr);
+    std::thread th2(update, size*1, size*1, size, tamAmostra, zf_arr);
+    std::thread th3(update, size*2, size*2, size, tamAmostra, zf_arr);
+    std::thread th4(update, size*3, size*3, size, tamAmostra, zf_arr);
+    //LOG("(min:%f, max:%f), \n", min, max);
     float max2 = -1000000000000000000000000000000000000000000000000000000.f;
     float min2 = 1000000000000000000000000000000000000000000000000000000.f;
     
@@ -1377,7 +1418,7 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
                 max2 = zf_arr[i + w*j];
         }
     }
-    LOG("(min2:%f, max2:%f), \n", min2, max2);
+    //LOG("(min2:%f, max2:%f), \n", min2, max2);
     
     for (int j = 0; j < h; ++j){
         for (int i = 0; i < w; ++i) {  
@@ -1425,7 +1466,9 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
 
 bool LoadDmapTexture()
 {
-    LOG("%s", g_terrain.dmap.pathToFile.c_str());
+    //LOG("%s\n", "-LoadDmapTexture");
+
+    //LOG("%s", g_terrain.dmap.pathToFile.c_str());
     if (!g_terrain.dmap.pathToFile.empty()) {
         return LoadDmapTexture16(TEXTURE_DMAP,
                                  TEXTURE_SMAP,
@@ -1492,6 +1535,8 @@ bool LoadBrunetonAtmosphereTextures()
  */
 bool LoadTextures()
 {
+    //LOG("%s\n", "LoadTextures");
+
     bool v = true;
 
     if (v) v &= LoadSceneFramebufferTexture();
@@ -1515,6 +1560,8 @@ bool LoadTextures()
  */
 bool LoadTerrainVariables()
 {
+    //LOG("%s\n", "LoadTerrainVariables");
+
     static bool first = true;
     struct PerFrameVariables {
         dja::mat4 model,                // 16
@@ -1601,7 +1648,7 @@ bool LoadTerrainVariables()
     }
 
 
-// upLoad to GPU
+    // upLoad to GPU
     djgb_to_gl(g_gl.streams[STREAM_TERRAIN_VARIABLES], (const void *)&variables, NULL);
     djgb_glbindrange(g_gl.streams[STREAM_TERRAIN_VARIABLES],
                      GL_UNIFORM_BUFFER,
@@ -1620,7 +1667,9 @@ bool LoadLebBuffer()
 {
     cbt_Tree *cbt = cbt_CreateAtDepth(g_terrain.maxDepth, 1);
 
-    LOG("Loading {Subd-Buffer}\n");
+    //LOG("%s\n", "LoadLebBuffer");
+    //LOG("Loading {Subd-Buffer}\n");
+
     if (glIsBuffer(g_gl.buffers[BUFFER_LEB]))
         glDeleteBuffers(1, &g_gl.buffers[BUFFER_LEB]);
     glGenBuffers(1, &g_gl.buffers[BUFFER_LEB]);
@@ -1648,7 +1697,9 @@ bool LoadLebBuffer()
  */
 bool LoadCbtNodeCountBuffer()
 {
-    LOG("Loading {Cbt-Node-Count-Buffer}\n");
+    //LOG("Loading {Cbt-Node-Count-Buffer}\n");
+    //LOG("%s\n", "LoadCbtNodeCountBuffer");
+
     if (glIsBuffer(g_gl.buffers[BUFFER_CBT_NODE_COUNT]))
         glDeleteBuffers(1, &g_gl.buffers[BUFFER_CBT_NODE_COUNT]);
     glGenBuffers(1, &g_gl.buffers[BUFFER_CBT_NODE_COUNT]);
@@ -1673,6 +1724,8 @@ bool LoadCbtNodeCountBuffer()
  */
 bool LoadRenderCmdBuffer()
 {
+    //LOG("%s\n", "LoadRenderCmdBuffer");
+
     uint32_t drawArraysCmd[8] = {2, 1, 0, 0, 0, 0, 0, 0};
     uint32_t drawMeshTasksCmd[8] = {1, 0, 0, 0, 0, 0, 0, 0};
     uint32_t drawElementsCmd[8] = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -1721,6 +1774,8 @@ bool LoadRenderCmdBuffer()
  */
 bool LoadMeshletBuffers()
 {
+    //LOG("%s\n", "LoadMeshletBuffers");
+
     std::vector<uint16_t> indexBuffer;
     std::vector<dja::vec2> vertexBuffer;
     std::map<uint32_t, uint16_t> hashMap;
@@ -1758,7 +1813,7 @@ bool LoadMeshletBuffers()
     if (glIsBuffer(g_gl.buffers[BUFFER_MESHLET_INDEXES]))
         glDeleteBuffers(1, &g_gl.buffers[BUFFER_MESHLET_INDEXES]);
 
-    LOG("Loading {Meshlet-Buffers}\n");
+    //LOG("Loading {Meshlet-Buffers}\n");
 
     glGenBuffers(1, &g_gl.buffers[BUFFER_MESHLET_INDEXES]);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_gl.buffers[BUFFER_MESHLET_INDEXES]);
@@ -1809,7 +1864,7 @@ bool LoadSphereBuffers()
         glDeleteBuffers(1, &g_gl.buffers[BUFFER_SPHERE_INDEXES]);
 
 
-LOG("Loading {Sphere-VertexBuffer}\n");
+//LOG("Loading {Sphere-VertexBuffer}\n");
     glGenBuffers(1, &g_gl.buffers[BUFFER_SPHERE_VERTICES]);
     glBindBuffer(GL_ARRAY_BUFFER, g_gl.buffers[BUFFER_SPHERE_VERTICES]);
     glBufferStorage(GL_ARRAY_BUFFER,
@@ -1818,7 +1873,7 @@ LOG("Loading {Sphere-VertexBuffer}\n");
                     0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    LOG("Loading {Sphere-IndexBuffer}\n");
+    //LOG("Loading {Sphere-IndexBuffer}\n");
     glGenBuffers(1, &g_gl.buffers[BUFFER_SPHERE_INDEXES]);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_gl.buffers[BUFFER_SPHERE_INDEXES]);
     glBufferStorage(GL_ELEMENT_ARRAY_BUFFER,
@@ -1839,6 +1894,8 @@ LOG("Loading {Sphere-VertexBuffer}\n");
  */
 bool LoadBuffers()
 {
+    //LOG("%s\n", "LoadBuffers");
+
     bool v = true;
 
     if (v) v &= LoadTerrainVariables();
@@ -1864,7 +1921,7 @@ bool LoadBuffers()
  */
 bool LoadEmptyVertexArray()
 {
-    LOG("Loading {Empty-VertexArray}\n");
+    //LOG("Loading {Empty-VertexArray}\n");
     if (glIsVertexArray(g_gl.vertexArrays[VERTEXARRAY_EMPTY]))
         glDeleteVertexArrays(1, &g_gl.vertexArrays[VERTEXARRAY_EMPTY]);
 
@@ -1882,7 +1939,7 @@ bool LoadEmptyVertexArray()
  */
 bool LoadMeshletVertexArray()
 {
-    LOG("Loading {Meshlet-VertexArray}\n");
+    //LOG("Loading {Meshlet-VertexArray}\n");
     if (glIsVertexArray(g_gl.vertexArrays[VERTEXARRAY_MESHLET]))
         glDeleteVertexArrays(1, &g_gl.vertexArrays[VERTEXARRAY_MESHLET]);
 
@@ -1906,7 +1963,7 @@ bool LoadMeshletVertexArray()
  */
 bool LoadSphereVertexArray()
 {
-    LOG("Loading {Sphere-VertexArray}\n");
+    //LOG("Loading {Sphere-VertexArray}\n");
     if (glIsVertexArray(g_gl.vertexArrays[VERTEXARRAY_SPHERE]))
         glDeleteVertexArrays(1, &g_gl.vertexArrays[VERTEXARRAY_SPHERE]);
 
@@ -1946,6 +2003,8 @@ bool LoadVertexArrays()
  */
 bool LoadNodeCountQuery()
 {
+    //LOG("%s\n", "-LoadNodeCountQuery");
+
     GLuint *query = &g_gl.queries[QUERY_NODE_COUNT];
 
     glGenQueries(1, query);
@@ -1962,6 +2021,8 @@ bool LoadNodeCountQuery()
  */
 bool LoadQueries()
 {
+    //LOG("%s\n", "*LoadQueries");
+
     bool success = true;
 
     if (success) success = LoadNodeCountQuery();
@@ -1980,7 +2041,7 @@ bool LoadQueries()
  */
 bool LoadSceneFramebuffer()
 {
-    LOG("Loading {Scene-Framebuffer}\n");
+    //LOG("Loading {Scene-Framebuffer}\n");
     if (glIsFramebuffer(g_gl.framebuffers[FRAMEBUFFER_SCENE]))
         glDeleteFramebuffers(1, &g_gl.framebuffers[FRAMEBUFFER_SCENE]);
 
@@ -2014,7 +2075,7 @@ bool LoadSceneFramebuffer()
 
     glDrawBuffer(GL_COLOR_ATTACHMENT0);
     if (GL_FRAMEBUFFER_COMPLETE != glCheckFramebufferStatus(GL_FRAMEBUFFER)) {
-        LOG("=> Failure <=\n");
+        //LOG("=> Failure <=\n");
 
         return false;
     }
@@ -2046,6 +2107,8 @@ bool LoadFramebuffers()
 
 void init()
 {
+    //LOG("%s\n", "init");
+
     bool v = true;
     int i;
     for (i = 0; i < CLOCK_COUNT; ++i) {
@@ -2111,6 +2174,8 @@ void release()
  */
 void renderTopView()
 {
+    //LOG("%s\n", "renderTopView");
+
     if (g_terrain.flags.topView) {
         glDisable(GL_CULL_FACE);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BUFFER_LEB, g_gl.buffers[BUFFER_LEB]);
@@ -2140,6 +2205,8 @@ void renderTopView()
 // LEB reduction step
 void lebReductionPass()
 {
+    //LOG("%s\n", "lebReductionPass");
+
     djgc_start(g_gl.clocks[CLOCK_REDUCTION]);
     int it = g_terrain.maxDepth;
 
@@ -2153,6 +2220,8 @@ void lebReductionPass()
 
         djgc_start(g_gl.clocks[CLOCK_REDUCTION00 + it - 1]);
         glUniform1i(loc, it);
+        //LOG("%s\n", "glDispatchCompute");
+
         glDispatchCompute(numGroup, 1, 1);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         djgc_stop(g_gl.clocks[CLOCK_REDUCTION00 + g_terrain.maxDepth - 1]);
@@ -2186,6 +2255,8 @@ void lebReductionPass()
  */
 void lebBatchingPassTsGs()
 {
+    //LOG("%s\n", "lebBatchingPassTsGs");
+
     glUseProgram(g_gl.programs[PROGRAM_BATCH]);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER,
                      BUFFER_TERRAIN_DRAW,
@@ -2198,6 +2269,8 @@ void lebBatchingPassTsGs()
 }
 void lebBatchingPassMs()
 {
+    //LOG("%s\n", "lebBatchingPassMs");
+
     glUseProgram(g_gl.programs[PROGRAM_BATCH]);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER,
                      BUFFER_TERRAIN_DRAW,
@@ -2214,6 +2287,8 @@ void lebBatchingPassMs()
 }
 void lebBatchingPassCs()
 {
+    //LOG("%s\n", "lebBatchingPassCs");
+
     glUseProgram(g_gl.programs[PROGRAM_BATCH]);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER,
                      BUFFER_TERRAIN_DRAW,
@@ -2235,6 +2310,8 @@ glDispatchCompute(1, 1, 1);
 }
 void lebBatchingPass()
 {
+    //LOG("%s\n", "lebBatchingPass");
+
     djgc_start(g_gl.clocks[CLOCK_BATCH]);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BUFFER_LEB, g_gl.buffers[BUFFER_LEB]);
     switch (g_terrain.method) {
@@ -2265,6 +2342,8 @@ void lebBatchingPass()
  */
 void lebUpdateAndRenderTs(int pingPong)
 {
+    //LOG("%s\n", "lebUpdateAndRenderTs");
+
     // set GL state
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -2286,6 +2365,8 @@ void lebUpdateAndRenderTs(int pingPong)
 }
 void lebUpdateAndRenderGs(int pingPong)
 {
+    //LOG("%s\n", "lebUpdateAndRenderGs");
+    
     // set GL state
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -2306,6 +2387,8 @@ void lebUpdateAndRenderGs(int pingPong)
 }
 void lebUpdateAndRenderMs(int pingPong)
 {
+    //LOG("%s\n", "lebUpdateAndRenderMs");
+
     // set GL state
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -2326,12 +2409,16 @@ void lebUpdateAndRenderMs(int pingPong)
 }
 void lebUpdateCs(int pingPong)
 {
+    //LOG("%s\n", "lebUpdateCs");
+
     // set GL state
     glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER,
                  g_gl.buffers[BUFFER_TERRAIN_DISPATCH_CS]);
 
     // update
     glUseProgram(g_gl.programs[PROGRAM_SPLIT + pingPong]);
+    //LOG("%s\n", "glDispatchComputeIndirect");
+
     glDispatchComputeIndirect(0);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
@@ -2340,6 +2427,8 @@ void lebUpdateCs(int pingPong)
 }
 void lebUpdate()
 {
+    //LOG("%s\n", "lebUpdate");
+
     static int pingPong = 0;
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BUFFER_LEB, g_gl.buffers[BUFFER_LEB]);
 
@@ -2375,6 +2464,8 @@ djgc_start(g_gl.clocks[CLOCK_UPDATE]);
  */
 void lebRenderCs()
 {
+    //LOG("%s\n", "lebRenderCs");
+
     // set GL state
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
@@ -2396,6 +2487,8 @@ void lebRenderCs()
 }
 void lebRender()
 {
+    //LOG("%s\n", "lebRender");
+
     djgc_start(g_gl.clocks[CLOCK_RENDER]);
     if (g_terrain.method == METHOD_CS) {
         lebRenderCs();
@@ -2406,6 +2499,8 @@ void lebRender()
 // -----------------------------------------------------------------------------
 void renderTerrain()
 {
+    //LOG("%s\n", "renderTerrain");
+
     djgc_start(g_gl.clocks[CLOCK_ALL]);
 
     LoadTerrainVariables();
@@ -2497,10 +2592,13 @@ void renderSky()
  */
 void RetrieveNodeCount()
 {
+    //LOG("%s\n", "RetrieveNodeCount");
+
     static GLint isReady = GL_FALSE;
     const GLuint *query = &g_gl.queries[QUERY_NODE_COUNT];
 
     glGetQueryObjectiv(*query, GL_QUERY_RESULT_AVAILABLE, &isReady);
+    //LOG("%s\n", "glDispatchCompute");
 
     if (isReady) {
         GLuint *buffer = &g_gl.buffers[BUFFER_CBT_NODE_COUNT];
@@ -2535,6 +2633,8 @@ void RetrieveNodeCount()
  */
 void renderScene()
 {
+    //LOG("%s\n", "renderScene");
+
     renderTerrain();
     RetrieveNodeCount();
     renderSky();
@@ -2560,6 +2660,8 @@ void PrintLargeNumber(const char *label, int32_t value)
 
 void renderViewer()
 {
+    //LOG("%s\n", "renderViewer");
+
     // render framebuffer
     glUseProgram(g_gl.programs[PROGRAM_VIEWER]);
     glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_EMPTY]);
@@ -2581,7 +2683,7 @@ void renderViewer()
 
         // Camera Widget
         ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(250, 180), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(250, 170), ImGuiCond_FirstUseEver);
         ImGui::Begin("Camera Settings");
         {
             const char* eProjections[] = {
@@ -2806,90 +2908,103 @@ void renderViewer()
         }
         ImGui::End();
 
-        ImGui::SetNextWindowPos(ImVec2(10, 250), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(250, 320), ImGuiCond_FirstUseEver);
 
-
-        ImGui::Begin("Noise Settings");
+        ImGui::SetNextWindowPos(ImVec2(10, 190), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(250, 135), ImGuiCond_FirstUseEver);
+        ImGui::Begin("Topology Settings");
         {
             const char* eTopology[] = {
                 "Mountains",
-                "Plain",
-                "Dunes"
+                "Inverse"
             };
             const char* eSurfaceNoise[] = {
-                "fBm",
-                "IQfBm",
-                "ridgedMF",
-                "WorleyfBm",
+                    "RIDGED",
+                    "FBM",
+                    "RIDGEDFBM",
             };
 
-            if (ImGui::SliderInt("Elevation", &elevacao, -1, 7)){
-                LOG("void Int = %i\n", elevacao);
+            if (ImGui::SliderInt("Seed", &seeds, 0, 100)) {
+                LOG("Seed = %i\n", seeds);
             }
-            if (ImGui::Combo("Geography", &mountain_dunes, &eTopology[0], BUFFER_SIZE(eTopology))) {
-                LOG("Montanha, Planície e Duna = %i\n", mountain_dunes);
+            if (ImGui::Combo("Geography", &mountain_inverse, &eTopology[0], BUFFER_SIZE(eTopology))) {
+                LOG("Montanha e Inverso = %i\n", mountain_inverse);
             }
             if (ImGui::Combo("Surface Noise", &noise, &eSurfaceNoise[0], BUFFER_SIZE(eSurfaceNoise))) {
                 LOG("Surface Noise = %i\n", noise);
             }
-            if (ImGui::SliderInt("Size", &amostra_ter, 0, 24)) {
-                LOG("Amostra = %i\n", amostra_ter);
+            if (ImGui::SliderInt("Escala", &scaleTER, 0, 1000)) {
+                LOG("Amostra = %i\n", scaleTER);
             }
+        }
 
+        ImGui::End();
+
+        ImGui::SetNextWindowPos(ImVec2(270, 250), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(300, 170), ImGuiCond_FirstUseEver);
+
+
+        ImGui::Begin("Ridged Setting");
+        
+        {
             if (ImGui::SliderFloat("Ridge size", &ridgeOffset, 0.f, 4.f, "%0.01f"))
                 LOG("Ridge Size = %f\n", ridgeOffset);
+            if (ImGui::SliderInt("Valley", &getValley, 1, 4))
+                LOG("void Int = %i\n", getValley);  
+            if (ImGui::SliderInt("Octaves", &octavesRMF, 0, 20))
+                LOG("Octaves = %f\n", octavesRMF);
 
-            if (ImGui::Checkbox("Automatic?", &automatic_octaves))
-                LOG("Automatic Octaves = %f\n", automatic_octaves);
-            ImGui::SameLine();   
-            if (ImGui::SliderInt("Octaves", &octaves_ter, 0, 20))
-                LOG("Octaves = %f\n", octaves_ter);
+            if (ImGui::SliderFloat("Wavelength", &wavelengthRMF, 0.f, 12.f, "%.01f"))
+                LOG("Wavelength = %f\n", wavelengthRMF);
+            if (ImGui::SliderFloat("Lacunarity", &lacunarityRMF, 0.f, 32.f, "%0.5f"))
+                LOG("Lacunarity = %f\n", lacunarityRMF);
+            if (ImGui::SliderFloat("Gain", &gainRMF, 0.f, 1.f, "%0.01f"))
+                LOG("Gain = %f\n", gainRMF);
+        }
+        ImGui::End();
 
-            if (ImGui::SliderFloat("Wavelength", &wavelength, 0.f, 12.f, "%.01f"))
-                LOG("Wavelength = %f\n", wavelength);
-            if (ImGui::SliderFloat("Lacunarity", &lacunarity_ter, 0.f, 32.f, "%0.5f"))
-                LOG("Lacunarity = %f\n", lacunarity_ter);
-            if (ImGui::SliderFloat("Gain", &gain_ter, 0.f, 1.f, "%0.01f"))
-                LOG("Gain = %f\n", gain_ter);
-            
 
-            if (ImGui::SliderInt("OctavesFBM", &octavesFBM, 0, 20))
-                LOG("OctavesFBM = %f\n", octavesFBM);
-            if (ImGui::SliderFloat("WavelengthFBM", &wavelengthFBM, 0.f, 12.f, "%.01f"))
-                LOG("WavelengthFBM = %f\n", wavelengthFBM);
-            if (ImGui::SliderFloat("LacunarityFBM", &lacunarityFBM, 0.f, 32.f, "%0.5f"))
-                LOG("LacunarityFBM = %f\n", lacunarityFBM);
-            if (ImGui::SliderFloat("GainFBM", &gainFBM, 0.f, 1.f, "%0.01f")) {
-                LOG("GainFBM = %f\n", gainFBM);
-            }
-
- 
-            if (ImGui::SliderInt("Seed", &seeds, 0, 100)) {
-                LOG("Seed = %i\n", seeds);
-            }
-            
-
+        ImGui::SetNextWindowPos(ImVec2(270, 430), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(250, 55), ImGuiCond_FirstUseEver);
+        ImGui::Begin("Generate Buttons");
+        {
             if (ImGui::Button("Generate Terrain"))
                 LoadDmapTexture();
+            ImGui::SameLine();
+
             if (ImGui::Button("Reset")){
-                automatic_octaves = false;
-                elevacao = 0;
-                mountain_dunes = PLANICE;
-                size_ter = 1280;
-                amostra_ter = 15;
+                getValley = 0;
+                mountain_inverse = MONTANHA;
+                scaleTER = 15;
                 seeds = 1000;
                 ridgeOffset = 1.0f;
-                wavelength = 1.4f;
-                octaves_ter = 4;
-                lacunarity_ter = 2.0f;
-                gain_ter = 0.5f;
+                wavelengthRMF = 1.4f;
+                octavesRMF = 4;
+                lacunarityRMF = 2.0f;
+                gainRMF = 0.5f;
                 wavelengthFBM = 1.42f;
                 octavesFBM = 4;
                 lacunarityFBM = 2.0f;
                 gainFBM = 0.5f;
                 LoadDmapTexture();
             }
+        }
+        ImGui::End();
+
+        ImGui::SetNextWindowPos(ImVec2(10, 335), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(250, 150), ImGuiCond_FirstUseEver);
+
+        ImGui::Begin("fBm");
+        {
+            if (ImGui::SliderInt("Octaves", &octavesFBM, 0, 20))
+                LOG("OctavesFBM = %f\n", octavesFBM);
+            if (ImGui::SliderFloat("Wavelength", &wavelengthFBM, 0.f, 12.f, "%.01f"))
+                LOG("WavelengthFBM = %f\n", wavelengthFBM);
+            if (ImGui::SliderFloat("Lacunarity", &lacunarityFBM, 0.f, 32.f, "%0.5f"))
+                LOG("LacunarityFBM = %f\n", lacunarityFBM);
+            if (ImGui::SliderFloat("Gain", &gainFBM, 0.f, 1.f, "%0.01f"))
+                LOG("GainFBM = %f\n", gainFBM);            
+            if (ImGui::SliderInt("ValleyFBM", &getValleyFBM, 1, 4))
+                LOG("ValleyFBM = %i\n", getValleyFBM);  
 
         }
         ImGui::End();
@@ -2922,6 +3037,8 @@ void renderViewer()
     
 void render()
 {
+    //LOG("%s\n", "*render");
+
     glBindFramebuffer(GL_FRAMEBUFFER, g_gl.framebuffers[FRAMEBUFFER_SCENE]);
     glViewport(0, 0, g_framebuffer.w, g_framebuffer.h);
     glClearColor(0.5, 0.5, 0.5, 1.0);
@@ -3043,13 +3160,13 @@ int main(int, char **)
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
     // Create the Window
-    LOG("Loading {Window-Main}\n");
+    //LOG("Loading {Window-Main}\n");
     GLFWwindow* window = glfwCreateWindow(
         VIEWER_DEFAULT_WIDTH, VIEWER_DEFAULT_HEIGHT,
         "Longest Edge Bisection Demo", NULL, NULL
     );
     if (window == NULL) {
-        LOG("=> Failure <=\n");
+        //LOG("=> Failure <=\n");
         glfwTerminate();
         return -1;
     }
@@ -3061,13 +3178,13 @@ int main(int, char **)
     glfwSetWindowSizeCallback(window, &resizeCallback);
 
     // Load OpenGL functions
-    LOG("Loading {OpenGL}\n");
+    //LOG("Loading {OpenGL}\n");
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        LOG("gladLoadGLLoader failed\n");
+        //LOG("gladLoadGLLoader failed\n");
         return -1;
     }
 
-    LOG("-- Begin -- Demo\n");
+    //LOG("-- Begin -- Demo\n");
     try {
         log_debug_output();
         IMGUI_CHECKVERSION();
@@ -3076,9 +3193,9 @@ int main(int, char **)
         ImGui::StyleColorsDark();
         ImGui_ImplGlfw_InitForOpenGL(window, false);
         ImGui_ImplOpenGL3_Init("#version 450");
-        LOG("-- Begin -- Init\n");
+        //LOG("-- Begin -- Init\n");
         init();
-        LOG("-- End -- Init\n");
+        //LOG("-- End -- Init\n");
 
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
@@ -3094,11 +3211,11 @@ int main(int, char **)
         glfwTerminate();
     }
     catch (std::exception& e) {
-        LOG("%s", e.what());
+        //LOG("%s", e.what());
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
         glfwTerminate();
-        LOG("(!) Demo Killed (!)\n");
+        //LOG("(!) Demo Killed (!)\n");
 
         return EXIT_FAILURE;
     }
@@ -3106,11 +3223,11 @@ int main(int, char **)
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
         glfwTerminate();
-        LOG("(!) Demo Killed (!)\n");
+        //LOG("(!) Demo Killed (!)\n");
 
         return EXIT_FAILURE;
     }
-    LOG("-- End -- Demo\n");
+    //LOG("-- End -- Demo\n");
 
     return 0;
     
