@@ -31,7 +31,7 @@ out PatchData {
 float LOD(vec3 posV){
     vec3 cam = vec3(inverse(u_ViewProjectionMatrix)[3]);
     float dist = distance(posV, cam);
-    return pow(2,int(max(1, log2(dist))));  
+    return (int(max(1, log2(dist))));  
 }
 
 void main()
@@ -46,56 +46,6 @@ void main()
     vec3 edgeP1P0 = (triangleVertices[1] - triangleVertices[0]).xyz;
     vec3 edgeP2P0 = (triangleVertices[2] - triangleVertices[0]).xyz;
     vec3 normal = dot(edgeP2P0, edgeP1P0); */
-
-    // texture coordinates
-        glm::vec2 uv1(0.0f, 1.0f);
-        glm::vec2 uv2(0.0f, 0.0f);
-        glm::vec2 uv3(1.0f, 0.0f);
-        glm::vec2 uv4(1.0f, 1.0f);
-        // normal vector
-        glm::vec3 nm(0.0f, 1.0f, 0.0f);
-
-        // calculate tangent/bitangent vectors of both triangles
-        glm::vec3 tangent1, bitangent1;
-        glm::vec3 tangent2, bitangent2;
-        // triangle 1
-        // ----------
-        glm::vec3 edge1 = pos2 - pos1;
-        glm::vec3 edge2 = pos3 - pos1;
-        glm::vec2 deltaUV1 = uv2 - uv1;
-        glm::vec2 deltaUV2 = uv3 - uv1;
-
-        float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
-
-        tangent1.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
-        tangent1.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
-        tangent1.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
-        tangent1 = glm::normalize(tangent1);
-
-        bitangent1.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
-        bitangent1.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
-        bitangent1.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
-        bitangent1 = glm::normalize(bitangent1);
-
-        // triangle 2
-        // ----------
-        edge1 = pos3 - pos1;
-        edge2 = pos4 - pos1;
-        deltaUV1 = uv3 - uv1;
-        deltaUV2 = uv4 - uv1;
-
-        f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
-
-        tangent2.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
-        tangent2.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
-        tangent2.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
-        tangent2 = glm::normalize(tangent2);
-
-
-        bitangent2.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
-        bitangent2.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
-        bitangent2.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
-        bitangent2 = glm::normalize(bitangent2);
         
     // compute target LoD
     vec2 targetLod = LevelOfDetail(triangleVertices);
@@ -138,8 +88,8 @@ void main()
         gl_TessLevelInner[0] =
         gl_TessLevelOuter[0] =
         gl_TessLevelOuter[1] =
-        gl_TessLevelOuter[2] = LOD((triangleVertices[0].xyz + triangleVertices[1].xyz + triangleVertices[2].xyz)/3.f);
-        //gl_TessLevelOuter[2] = TERRAIN_PATCH_TESS_FACTOR;
+        //gl_TessLevelOuter[2] = LOD((triangleVertices[0].xyz + triangleVertices[1].xyz + triangleVertices[2].xyz)/3.f);
+        gl_TessLevelOuter[2] = TERRAIN_PATCH_TESS_FACTOR;
    
     }
     else {

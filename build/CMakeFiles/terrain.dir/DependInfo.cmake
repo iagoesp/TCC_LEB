@@ -14,6 +14,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/run/media/terminus/HDD/TCC_LEB/submodules/imgui/imgui_draw.cpp" "CMakeFiles/terrain.dir/submodules/imgui/imgui_draw.cpp.o" "gcc" "CMakeFiles/terrain.dir/submodules/imgui/imgui_draw.cpp.o.d"
   "/run/media/terminus/HDD/TCC_LEB/submodules/imgui/imgui_widgets.cpp" "CMakeFiles/terrain.dir/submodules/imgui/imgui_widgets.cpp.o" "gcc" "CMakeFiles/terrain.dir/submodules/imgui/imgui_widgets.cpp.o.d"
   "/run/media/terminus/HDD/TCC_LEB/terrain/OpenSimplexNoise.cpp" "CMakeFiles/terrain.dir/terrain/OpenSimplexNoise.cpp.o" "gcc" "CMakeFiles/terrain.dir/terrain/OpenSimplexNoise.cpp.o.d"
+  "/run/media/terminus/HDD/TCC_LEB/terrain/erosion.cpp" "CMakeFiles/terrain.dir/terrain/erosion.cpp.o" "gcc" "CMakeFiles/terrain.dir/terrain/erosion.cpp.o.d"
   "/run/media/terminus/HDD/TCC_LEB/terrain/imgui_impl.cpp" "CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.o" "gcc" "CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.o.d"
   "/run/media/terminus/HDD/TCC_LEB/terrain/terrain.cpp" "CMakeFiles/terrain.dir/terrain/terrain.cpp.o" "gcc" "CMakeFiles/terrain.dir/terrain/terrain.cpp.o.d"
   )

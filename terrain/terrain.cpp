@@ -9,6 +9,7 @@
 
 #include "grid.h"
 #include "simplex.h"
+#include "erosion.hpp"
 #include "OpenSimplexNoise.h"
 #include <cstdio>
 #include <cstdlib>
@@ -23,6 +24,19 @@
 #include <cstdlib>
 #include <ctime>
 #include <thread>
+#include<unistd.h>
+#include <SDL2/SDL.h>
+
+struct Particle{
+  //Construct Particle at Position
+  Particle(glm::vec2 _pos){ pos = _pos; }
+
+  glm::vec2 pos;
+  glm::vec2 speed = glm::vec2(0.0);
+
+  float volume = 1.0;   //This will vary in time
+  float sediment = 0.0; //Fraction of Volume that is Sediment!
+};
 
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -145,23 +159,23 @@ int noise = RIDGEDFBM;
 
 int mountain_inverse = MONTANHA;
 
-int scaleTER = 100;
+int scaleTER = 6;
 int seeds = 1000;
 
 
-int getValley = 0;
-float ridgeOffset = 2.0f;
-float wavelengthRMF = 1.4f;
-int octavesRMF = 8;
+
+int octavesFBM = 14;
+float wavelengthFBM = 4.5f;
+float lacunarityFBM = 1.94595f;
+float gainFBM = 0.5f;
+int getValleyFBM = 2;
+
+float ridgeOffset = 2.8f;
+int getValley = 2;
+int octavesRMF = 10;
+float wavelengthRMF = 0.6f;
 float lacunarityRMF = 2.0f;
 float gainRMF = 0.5f;
-
-int getValleyFBM = 1;
-float wavelengthFBM = 1.0f;
-int octavesFBM = 8;
-float lacunarityFBM = 2.0f;
-float gainFBM = 0.5f;
-
 // -----------------------------------------------------------------------------
 // Terrain Manager
 enum { METHOD_CS, METHOD_TS, METHOD_GS, METHOD_MS };
@@ -184,14 +198,14 @@ struct TerrainManager {
 } g_terrain = {
     {true, true, false, false, true},
     {std::string(PATH_TO_ASSET_DIRECTORY "./kauai.png"),
-     SIZE_TERRAIN,SIZE_TERRAIN, 0.0f, 1500.0f,
-     1.0f},
+     SIZE_TERRAIN,SIZE_TERRAIN, 0.0f, 2000.0f,
+     2.0f},
     METHOD_CS,
     SHADING_DIFFUSE,
     3,
     7.0f,
     0.1f,
-    25,
+    29,
     0,
     SIZE_TERRAIN
 };
@@ -1203,7 +1217,7 @@ bool LoadSceneFramebufferTexture()
  *
  * This Loads an RG32F texture used as a slope map
  */
-void LoadNmapTexture16(int smapID, std::vector<uint16_t> texels, int w, int h)
+void LoadNmapTexture16(int smapID, float zf_arr[], std::vector<uint16_t> texels, int w, int h)
 {
 
     int mipcnt = djgt__mipcnt(w, h, 1);
@@ -1231,7 +1245,6 @@ void LoadNmapTexture16(int smapID, std::vector<uint16_t> texels, int w, int h)
 
             smap[    2 * (i + w * j)] = slope_x;
             smap[1 + 2 * (i + w * j)] = slope_y;
-
         }  
     } 
 
@@ -1289,10 +1302,6 @@ float fBm(const glm::vec2 pos, const int octaveCount, float lacunarity, float ga
 float calcfBmNoise(glm::vec3 pos){
     float noiseFBM = 0.f;
     float f = scaleTER*getValleyFBM;
-    if(getValleyFBM == 3)
-        f = scaleTER*4;
-    if(getValleyFBM == 4)
-        f = scaleTER*8;
     noiseFBM = Simplex::fBm(scaleTER*wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM)/f;
     return noiseFBM;
 }
@@ -1304,7 +1313,6 @@ float clamp(float n, float lower, float upper) {
 float calcSurfaceNoise(glm::vec3 pos){
     float noiseRMF = 0.f;
     float noiseFBM = 0.f;
-
     float fBm_Ampscale = pow(gainFBM, octavesRMF);
     float fBm_UVScale  = pow(lacunarityFBM, octavesRMF);
     if(noise == RIDGED || noise == RIDGEDFBM){
@@ -1319,7 +1327,7 @@ float calcSurfaceNoise(glm::vec3 pos){
 
         if(getValleyFBM > 1)
             noiseFBM = pow(noiseFBM, getValleyFBM);
-        return glm::max(noiseFBM,noiseFBM + noiseRMF*clamp(noiseFBM, 0,1));
+        return noiseRMF + noiseFBM*noiseRMF;
     }
  
     noiseFBM = Simplex::fBm(wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM);
@@ -1330,9 +1338,11 @@ float calcSurfaceNoise(glm::vec3 pos){
     return noiseFBM;
 }
 
-void update(int h, int w, int size, float tamAmostra, float *zf_arr){
+void update(int h, int size, float tamAmostra, float *zf_arr){
+    //LOG("De %i\n", h);
      for (int j = h; j < h + size; j++){
-        for (int i = w; i < w + size; i++) {
+        for (int i = 0; i < size*4; i++) {
+
             float h = -2000.5f;
             //glm::vec2 pos = glm::vec2(float(i*tamAmostra), float(j*tamAmostra));
             glm::vec3 pos = glm::vec3(float(i*tamAmostra), h, float(j*tamAmostra));
@@ -1345,19 +1355,40 @@ void update(int h, int w, int size, float tamAmostra, float *zf_arr){
                 h = 1.f - sn;
             
             h += calcfBmNoise(pos);
-            
+            //h *= g_terrain.dmap.scale;
             int trunc = h*1000000;
             h = float(trunc)/1000000.f;
 
-            h -= 100.f;
             
-            zf_arr[i + w*j] = h;
+            zf_arr[i + size*4*j] = h;
         }
     }
 }
 
+glm::vec3 surfaceNormal(int i, int j, int w, float *heightmap){
+  /*
+    Note: Surface normal is computed in this way, because the square-grid surface is meshed using triangles.
+    To avoid spatial artifacts, you need to weight properly with all neighbors.
+  */
+ float scale = g_terrain.dmap.scale;
+  glm::vec3 n = glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(heightmap[i + w*j]-heightmap[i+1+w*j]), 1.0, 0.0));  //Positive X
+  n += glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(heightmap[i-1+w*j]-heightmap[i+w*j]), 1.0, 0.0));  //Negative X
+  n += glm::vec3(0.15) * glm::normalize(glm::vec3(0.0, 1.0, scale*(heightmap[i+w*j]-heightmap[i+w*(j+1)])));    //Positive Y
+  n += glm::vec3(0.15) * glm::normalize(glm::vec3(0.0, 1.0, scale*(heightmap[i+w*(j-1)]-heightmap[i+w*j])));  //Negative Y
+
+  //Diagonals! (This removes the last spatial artifacts)
+  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i+w*j]-heightmap[i+1+w*(j+1)])/sqrt(2), sqrt(2), scale*(heightmap[i+w*j]-heightmap[i+1+w*(j+1)])/sqrt(2)));    //Positive Y
+  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i+w*j]-heightmap[i+1+w*(j-1)])/sqrt(2), sqrt(2), scale*(heightmap[i+w*j]-heightmap[i+1+w*(j-1)])/sqrt(2)));    //Positive Y
+  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i+w*j]-heightmap[i-1+w*(j+1)])/sqrt(2), sqrt(2), scale*(heightmap[i+w*j]-heightmap[i-1+w*(j+1)])/sqrt(2)));    //Positive Y
+  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i+w*j]-heightmap[i-1+w*(j-1)])/sqrt(2), sqrt(2), scale*(heightmap[i+w*j]-heightmap[i-1+w*(j-1)])/sqrt(2)));    //Positive Y
+
+  return n;
+}
+
 bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
 {
+    double lastTime = glfwGetTime();
+    double deltaTime = 0;
     djg_texture *djgt = djgt_create(1);
 
     //LOG("Loading {Dmap-Texture}\n");
@@ -1370,10 +1401,10 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
 
 /*     int w = g_terrain.dmap.width/10;
     int h = g_terrain.dmap.height/10; */
-    int size = 1024;
+    int size = pow(2,12);
     int w = size*4;
+    LOG("Tamanho da Malha: %i\n", w);
     int h = w;
-    pthread_t threads[4];
 
     int mipcnt = djgt__mipcnt(w, h, 1);
     std::vector<uint16_t> dmap(w * h * 2);
@@ -1381,48 +1412,47 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     //std::string title = "dmap";
     std::vector<uint16_t> texels2(w*h);
     std::vector<float> normals(w*h*2);
-    std::vector<float> zf_arr(w*h);
-    float ridge = 1.1f;
-    float octaves = 32.f;
-    float lacunarity = 2.0f;
-    float gain = .66f;
+    float *zf_arr = new float [w*h];
     
-    float tamAmostra = w / (float)(pow(10,scaleTER/2.5f));
-    tamAmostra = g_terrain.dmap.scale/(float)scaleTER;//w / (float)(pow(10,scaleTER/2.5f));
+    float tamAmostra = w / (float)(pow(10,scaleTER));
     //LOG("Loading --------------tamAmostra%f\n", tamAmostra);
     std::vector<glm::vec3> positions(w*h);
     Simplex::seed(seeds);
-    for (int j = 0; j < h; j++){
-        for (int i = 0; i < w; i++) {
-            glm::vec3 pos = glm::vec3(float(i*tamAmostra), h, float(j*tamAmostra));
-            positions.push_back(pos);
-        }
-    }
-    std::thread th1(update, size*0, size*0, size, tamAmostra, zf_arr);
-    std::thread th2(update, size*1, size*1, size, tamAmostra, zf_arr);
-    std::thread th3(update, size*2, size*2, size, tamAmostra, zf_arr);
-    std::thread th4(update, size*3, size*3, size, tamAmostra, zf_arr);
-    //LOG("(min:%f, max:%f), \n", min, max);
-    float max2 = -1000000000000000000000000000000000000000000000000000000.f;
-    float min2 = 1000000000000000000000000000000000000000000000000000000.f;
-    
+
+    int sz0 = size*0;     
+    int sz1 = size*1;
+    int sz2 = size*2;
+    int sz3 = size*3;
+
+    std::thread th1(update, sz0, size, tamAmostra, zf_arr);
+    std::thread th2(update, sz1, size, tamAmostra, zf_arr);
+    std::thread th3(update, sz2, size, tamAmostra, zf_arr);
+    std::thread th4(update, sz3, size, tamAmostra, zf_arr);
+    th1.join();
+    th2.join();
+    th3.join();
+    th4.join();
+
+  
     for (int j = 0; j < h; ++j){
         for (int i = 0; i < w; ++i) {
-            float h = zf_arr[i + w*j];
-            
-            zf_arr[i + w*j] = (h - min)/(max-min);
-            if(zf_arr[i + w*j]<min2)
-                min2 = zf_arr[i + w*j];
-                    
-            if(zf_arr[i + w*j]>max2)
-                max2 = zf_arr[i + w*j];
+
+            float height = zf_arr[i + w*j];         
+
+            min = glm::min(min, height);
+
+            max = glm::max(max, height);
         }
     }
+
+    //Erosion eroder = Erosion();
+    //zf_arr = eroder.erode(zf_arr, w, 200000);
+
     //LOG("(min2:%f, max2:%f), \n", min2, max2);
-    
     for (int j = 0; j < h; ++j){
         for (int i = 0; i < w; ++i) {  
-            float h = zf_arr[i + w*j];
+            float h = (zf_arr[i + w*j]-min)/(max-min);
+
             uint16_t h16 = uint16_t(h * ((1 << 16) - 1));
             uint16_t h2 = h * h * ((1 << 16) - 1);
             texels2[i + w * j] = h16;
@@ -1433,8 +1463,16 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
         }        
     }
     
+    // Exiba o tempo de execução
+    double now = glfwGetTime();
+    double deltaTime1 = now - lastTime;
+    std::cout << "Tempo de execução da textura: " << deltaTime1 << " segundos" << std::endl;
+    
+    double nowNormal = glfwGetTime();
+
     // Load nmap from dmap
-    LoadNmapTexture16(smapID, texels2, w,h);
+    LoadNmapTexture16(smapID, zf_arr, texels2, w,h);
+    
 
     glActiveTexture(GL_TEXTURE0 + dmapID);
     if (glIsTexture(g_gl.textures[dmapID]))
@@ -1459,6 +1497,11 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
                     GL_TEXTURE_WRAP_T,
                     GL_CLAMP_TO_EDGE);
     glActiveTexture(GL_TEXTURE0);
+    now = glfwGetTime();
+    double deltaTime2 = now - nowNormal;
+    std::cout << "Tempo de execução com a normal: " << deltaTime2 << " segundos" << std::endl;
+    std::cout << "Tempo de execução com a normal e textura: " << deltaTime1 + deltaTime2 << " segundos" << std::endl;
+
     djgt_release(djgt);
 
     return (glGetError() == GL_NO_ERROR);
@@ -2835,7 +2878,7 @@ void renderViewer()
         // Terrain Parameters
         ImGui::SetNextWindowPos(ImVec2(270, 10), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(380, 235), ImGuiCond_FirstUseEver);
-        ImGui::Begin("Terrain Settings");
+        ImGui::Begin("CBT Terrain Settings");
         {
             const char* eShadings[] = {
                 "Diffuse",
@@ -2911,11 +2954,11 @@ void renderViewer()
 
         ImGui::SetNextWindowPos(ImVec2(10, 190), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(250, 135), ImGuiCond_FirstUseEver);
-        ImGui::Begin("Topology Settings");
+        ImGui::Begin("Terrain Settings");
         {
-            const char* eTopology[] = {
+            const char* eTerrain[] = {
                 "Mountains",
-                "Inverse"
+                "Inverse Mountains"
             };
             const char* eSurfaceNoise[] = {
                     "RIDGED",
@@ -2926,13 +2969,13 @@ void renderViewer()
             if (ImGui::SliderInt("Seed", &seeds, 0, 100)) {
                 LOG("Seed = %i\n", seeds);
             }
-            if (ImGui::Combo("Geography", &mountain_inverse, &eTopology[0], BUFFER_SIZE(eTopology))) {
+            if (ImGui::Combo("Terrain", &mountain_inverse, &eTerrain[0], BUFFER_SIZE(eTerrain))) {
                 LOG("Montanha e Inverso = %i\n", mountain_inverse);
             }
             if (ImGui::Combo("Surface Noise", &noise, &eSurfaceNoise[0], BUFFER_SIZE(eSurfaceNoise))) {
                 LOG("Surface Noise = %i\n", noise);
             }
-            if (ImGui::SliderInt("Escala", &scaleTER, 0, 1000)) {
+            if (ImGui::SliderInt("Scale", &scaleTER, 0, 10)) {
                 LOG("Amostra = %i\n", scaleTER);
             }
         }
@@ -2940,20 +2983,18 @@ void renderViewer()
         ImGui::End();
 
         ImGui::SetNextWindowPos(ImVec2(270, 250), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(300, 170), ImGuiCond_FirstUseEver);
-
+        ImGui::SetNextWindowSize(ImVec2(380, 170), ImGuiCond_FirstUseEver);
 
         ImGui::Begin("Ridged Setting");
-        
         {
-            if (ImGui::SliderFloat("Ridge size", &ridgeOffset, 0.f, 4.f, "%0.01f"))
+            if (ImGui::SliderFloat("Ridge size", &ridgeOffset, 0.f, 2.8f, "%0.01f"))
                 LOG("Ridge Size = %f\n", ridgeOffset);
-            if (ImGui::SliderInt("Valley", &getValley, 1, 4))
+            if (ImGui::SliderInt("Valley", &getValley, 1, 2))
                 LOG("void Int = %i\n", getValley);  
             if (ImGui::SliderInt("Octaves", &octavesRMF, 0, 20))
                 LOG("Octaves = %f\n", octavesRMF);
 
-            if (ImGui::SliderFloat("Wavelength", &wavelengthRMF, 0.f, 12.f, "%.01f"))
+            if (ImGui::SliderFloat("Wavelength", &wavelengthRMF, 0.f, 10.f, "%0.01f"))
                 LOG("Wavelength = %f\n", wavelengthRMF);
             if (ImGui::SliderFloat("Lacunarity", &lacunarityRMF, 0.f, 32.f, "%0.5f"))
                 LOG("Lacunarity = %f\n", lacunarityRMF);
@@ -2962,9 +3003,8 @@ void renderViewer()
         }
         ImGui::End();
 
-
         ImGui::SetNextWindowPos(ImVec2(270, 430), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(250, 55), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(380, 55), ImGuiCond_FirstUseEver);
         ImGui::Begin("Generate Buttons");
         {
             if (ImGui::Button("Generate Terrain"))
@@ -2972,19 +3012,88 @@ void renderViewer()
             ImGui::SameLine();
 
             if (ImGui::Button("Reset")){
-                getValley = 0;
-                mountain_inverse = MONTANHA;
-                scaleTER = 15;
                 seeds = 1000;
-                ridgeOffset = 1.0f;
-                wavelengthRMF = 1.4f;
-                octavesRMF = 4;
+                mountain_inverse = MONTANHA;
+                noise = RIDGEDFBM;
+                scaleTER = 6;
+
+                octavesFBM = 14;
+                wavelengthFBM = 1.0f;
+                lacunarityFBM = 1.94595;
+                gainFBM = 0.5f;
+                getValleyFBM = 1;
+
+                ridgeOffset = 2.5f;
+                getValley = 2;
+                octavesRMF = 8;
+                wavelengthRMF = 0.3f;
                 lacunarityRMF = 2.0f;
                 gainRMF = 0.5f;
-                wavelengthFBM = 1.42f;
-                octavesFBM = 4;
-                lacunarityFBM = 2.0f;
+                LoadDmapTexture();
+            }
+            
+            ImGui::SameLine();
+
+            if (ImGui::Button("Flat")){
+                seeds = 54;
+                mountain_inverse = MONTANHA;
+                scaleTER = 7;
+
+                octavesFBM = 14;
+                wavelengthFBM = 4.f;
+                lacunarityFBM = 2.25f;
                 gainFBM = 0.5f;
+                getValleyFBM = 1;
+
+                ridgeOffset = 1.0f;
+                getValley = 4;
+                octavesRMF = 2;
+                wavelengthRMF = 1.f;
+                lacunarityRMF = 2.0f;
+                gainRMF = 0.5f;
+                LoadDmapTexture();
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("Valley")){
+                seeds = 22;
+                mountain_inverse = MONTANHA;
+                scaleTER = 6;
+
+                octavesFBM = 14;
+                wavelengthFBM = 4.5f;
+                lacunarityFBM = 2.1621;
+                gainFBM = 0.5f;
+                getValleyFBM = 1;
+
+                ridgeOffset = 2.8f;
+                getValley = 2;
+                octavesRMF = 10;
+                wavelengthRMF = 1.3f;
+                lacunarityRMF = 2.0f;
+                gainRMF = 0.5f;
+                LoadDmapTexture();
+            }
+            ImGui::SameLine();
+
+            if (ImGui::Button("Mountains")){
+                seeds = 54;
+                mountain_inverse = MONTANHA;
+                scaleTER = 8;
+
+                octavesFBM = 14;
+                wavelengthFBM = 6.1f;
+                lacunarityFBM = 1.94595;
+                gainFBM = 0.5f;
+                getValleyFBM = 1;
+
+                ridgeOffset = 2.8f;
+                getValley = 1;
+                octavesRMF = 8;
+                wavelengthRMF = 4.2f;
+                lacunarityRMF = 1.93103;
+                gainRMF = 0.6f;
                 LoadDmapTexture();
             }
         }
@@ -3064,6 +3173,8 @@ keyboardCallback(
     int key, int, int action, int
 ) {
     ImGuiIO& io = ImGui::GetIO();
+    dja::mat3 axis = dja::transpose(g_camera.axis);
+
     if (io.WantCaptureKeyboard)
         return;
 
@@ -3083,7 +3194,22 @@ keyboardCallback(
             LoadBuffers();
             LoadPrograms();
             break;
+         case GLFW_KEY_W:
+            g_camera.pos -= axis[2] * 0.5f * 5e-2 * norm(g_camera.pos);
+
+            break;
         default: break;
+        }
+    }
+     if (action == GLFW_REPEAT) {
+        switch (key) {
+            case GLFW_KEY_W:
+                g_camera.pos -= axis[2] * 0.4f * 5e-2 * norm(g_camera.pos);
+                break;
+            case GLFW_KEY_S:
+                g_camera.pos += axis[2] * 0.4f * 5e-2 * norm(g_camera.pos);
+                break;
+            break;
         }
     }
 }
@@ -3153,6 +3279,10 @@ void usage(const char *app)
 // -----------------------------------------------------------------------------
 int main(int, char **)
 {
+    double lastTime = glfwGetTime();
+    double deltaTime = 0;
+
+
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
@@ -3195,6 +3325,12 @@ int main(int, char **)
         ImGui_ImplOpenGL3_Init("#version 450");
         //LOG("-- Begin -- Init\n");
         init();
+        double now = glfwGetTime();
+        deltaTime = now - lastTime;
+
+        // Exiba o tempo de execução
+        std::cout << "Tempo de execução: " << deltaTime << " segundos" << std::endl;
+
         //LOG("-- End -- Init\n");
 
         while (!glfwWindowShouldClose(window)) {
@@ -3232,3 +3368,4 @@ int main(int, char **)
     return 0;
     
 }
+

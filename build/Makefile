@@ -417,6 +417,30 @@ terrain/OpenSimplexNoise.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/terrain.dir/build.make CMakeFiles/terrain.dir/terrain/OpenSimplexNoise.cpp.s
 .PHONY : terrain/OpenSimplexNoise.cpp.s
 
+terrain/erosion.o: terrain/erosion.cpp.o
+.PHONY : terrain/erosion.o
+
+# target to build an object file
+terrain/erosion.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/terrain.dir/build.make CMakeFiles/terrain.dir/terrain/erosion.cpp.o
+.PHONY : terrain/erosion.cpp.o
+
+terrain/erosion.i: terrain/erosion.cpp.i
+.PHONY : terrain/erosion.i
+
+# target to preprocess a source file
+terrain/erosion.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/terrain.dir/build.make CMakeFiles/terrain.dir/terrain/erosion.cpp.i
+.PHONY : terrain/erosion.cpp.i
+
+terrain/erosion.s: terrain/erosion.cpp.s
+.PHONY : terrain/erosion.s
+
+# target to generate assembly for a file
+terrain/erosion.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/terrain.dir/build.make CMakeFiles/terrain.dir/terrain/erosion.cpp.s
+.PHONY : terrain/erosion.cpp.s
+
 terrain/glad/glad.o: terrain/glad/glad.c.o
 .PHONY : terrain/glad/glad.o
 
@@ -529,6 +553,9 @@ help:
 	@echo "... terrain/OpenSimplexNoise.o"
 	@echo "... terrain/OpenSimplexNoise.i"
 	@echo "... terrain/OpenSimplexNoise.s"
+	@echo "... terrain/erosion.o"
+	@echo "... terrain/erosion.i"
+	@echo "... terrain/erosion.s"
 	@echo "... terrain/glad/glad.o"
 	@echo "... terrain/glad/glad.i"
 	@echo "... terrain/glad/glad.s"

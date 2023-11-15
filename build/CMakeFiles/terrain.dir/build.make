@@ -139,10 +139,24 @@ CMakeFiles/terrain.dir/terrain/OpenSimplexNoise.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/terrain.dir/terrain/OpenSimplexNoise.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /run/media/terminus/HDD/TCC_LEB/terrain/OpenSimplexNoise.cpp -o CMakeFiles/terrain.dir/terrain/OpenSimplexNoise.cpp.s
 
+CMakeFiles/terrain.dir/terrain/erosion.cpp.o: CMakeFiles/terrain.dir/flags.make
+CMakeFiles/terrain.dir/terrain/erosion.cpp.o: /run/media/terminus/HDD/TCC_LEB/terrain/erosion.cpp
+CMakeFiles/terrain.dir/terrain/erosion.cpp.o: CMakeFiles/terrain.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/run/media/terminus/HDD/TCC_LEB/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/terrain.dir/terrain/erosion.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/terrain.dir/terrain/erosion.cpp.o -MF CMakeFiles/terrain.dir/terrain/erosion.cpp.o.d -o CMakeFiles/terrain.dir/terrain/erosion.cpp.o -c /run/media/terminus/HDD/TCC_LEB/terrain/erosion.cpp
+
+CMakeFiles/terrain.dir/terrain/erosion.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/terrain.dir/terrain/erosion.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /run/media/terminus/HDD/TCC_LEB/terrain/erosion.cpp > CMakeFiles/terrain.dir/terrain/erosion.cpp.i
+
+CMakeFiles/terrain.dir/terrain/erosion.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/terrain.dir/terrain/erosion.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /run/media/terminus/HDD/TCC_LEB/terrain/erosion.cpp -o CMakeFiles/terrain.dir/terrain/erosion.cpp.s
+
 CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.o: CMakeFiles/terrain.dir/flags.make
 CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.o: /run/media/terminus/HDD/TCC_LEB/terrain/imgui_impl.cpp
 CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.o: CMakeFiles/terrain.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/run/media/terminus/HDD/TCC_LEB/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/run/media/terminus/HDD/TCC_LEB/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.o -MF CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.o.d -o CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.o -c /run/media/terminus/HDD/TCC_LEB/terrain/imgui_impl.cpp
 
 CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.i: cmake_force
@@ -156,7 +170,7 @@ CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.s: cmake_force
 CMakeFiles/terrain.dir/terrain/terrain.cpp.o: CMakeFiles/terrain.dir/flags.make
 CMakeFiles/terrain.dir/terrain/terrain.cpp.o: /run/media/terminus/HDD/TCC_LEB/terrain/terrain.cpp
 CMakeFiles/terrain.dir/terrain/terrain.cpp.o: CMakeFiles/terrain.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/run/media/terminus/HDD/TCC_LEB/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/terrain.dir/terrain/terrain.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/run/media/terminus/HDD/TCC_LEB/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/terrain.dir/terrain/terrain.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/terrain.dir/terrain/terrain.cpp.o -MF CMakeFiles/terrain.dir/terrain/terrain.cpp.o.d -o CMakeFiles/terrain.dir/terrain/terrain.cpp.o -c /run/media/terminus/HDD/TCC_LEB/terrain/terrain.cpp
 
 CMakeFiles/terrain.dir/terrain/terrain.cpp.i: cmake_force
@@ -170,7 +184,7 @@ CMakeFiles/terrain.dir/terrain/terrain.cpp.s: cmake_force
 CMakeFiles/terrain.dir/terrain/glad/glad.c.o: CMakeFiles/terrain.dir/flags.make
 CMakeFiles/terrain.dir/terrain/glad/glad.c.o: /run/media/terminus/HDD/TCC_LEB/terrain/glad/glad.c
 CMakeFiles/terrain.dir/terrain/glad/glad.c.o: CMakeFiles/terrain.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/run/media/terminus/HDD/TCC_LEB/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building C object CMakeFiles/terrain.dir/terrain/glad/glad.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/run/media/terminus/HDD/TCC_LEB/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building C object CMakeFiles/terrain.dir/terrain/glad/glad.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/terrain.dir/terrain/glad/glad.c.o -MF CMakeFiles/terrain.dir/terrain/glad/glad.c.o.d -o CMakeFiles/terrain.dir/terrain/glad/glad.c.o -c /run/media/terminus/HDD/TCC_LEB/terrain/glad/glad.c
 
 CMakeFiles/terrain.dir/terrain/glad/glad.c.i: cmake_force
@@ -188,6 +202,7 @@ terrain_OBJECTS = \
 "CMakeFiles/terrain.dir/submodules/imgui/imgui_draw.cpp.o" \
 "CMakeFiles/terrain.dir/submodules/imgui/imgui_widgets.cpp.o" \
 "CMakeFiles/terrain.dir/terrain/OpenSimplexNoise.cpp.o" \
+"CMakeFiles/terrain.dir/terrain/erosion.cpp.o" \
 "CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.o" \
 "CMakeFiles/terrain.dir/terrain/terrain.cpp.o" \
 "CMakeFiles/terrain.dir/terrain/glad/glad.c.o"
@@ -200,6 +215,7 @@ terrain: CMakeFiles/terrain.dir/submodules/imgui/imgui_demo.cpp.o
 terrain: CMakeFiles/terrain.dir/submodules/imgui/imgui_draw.cpp.o
 terrain: CMakeFiles/terrain.dir/submodules/imgui/imgui_widgets.cpp.o
 terrain: CMakeFiles/terrain.dir/terrain/OpenSimplexNoise.cpp.o
+terrain: CMakeFiles/terrain.dir/terrain/erosion.cpp.o
 terrain: CMakeFiles/terrain.dir/terrain/imgui_impl.cpp.o
 terrain: CMakeFiles/terrain.dir/terrain/terrain.cpp.o
 terrain: CMakeFiles/terrain.dir/terrain/glad/glad.c.o
@@ -208,7 +224,7 @@ terrain: submodules/glfw/src/libglfw3.a
 terrain: /usr/lib/librt.a
 terrain: /usr/lib/libm.so
 terrain: CMakeFiles/terrain.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/run/media/terminus/HDD/TCC_LEB/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Linking CXX executable terrain"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/run/media/terminus/HDD/TCC_LEB/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Linking CXX executable terrain"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/terrain.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

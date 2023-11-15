@@ -252,6 +252,7 @@ CMakeFiles/terrain.dir/terrain/terrain.cpp.o: \
  /usr/include/glm/detail/type_half.hpp \
  /usr/include/glm/detail/type_half.inl /usr/include/glm/integer.hpp \
  /usr/include/glm/detail/func_integer.inl \
+ /run/media/terminus/HDD/TCC_LEB/terrain/erosion.hpp \
  /run/media/terminus/HDD/TCC_LEB/terrain/OpenSimplexNoise.h \
  /usr/include/c++/13.2.1/utility \
  /usr/include/c++/13.2.1/bits/stl_relops.h \
@@ -301,11 +302,136 @@ CMakeFiles/terrain.dir/terrain/terrain.cpp.o: \
  /usr/include/c++/13.2.1/x86_64-pc-linux-gnu/bits/basic_file.h \
  /usr/include/c++/13.2.1/x86_64-pc-linux-gnu/bits/c++io.h \
  /usr/include/c++/13.2.1/bits/fstream.tcc /usr/include/c++/13.2.1/ctime \
- /run/media/terminus/HDD/TCC_LEB/submodules/stb/stb_image.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/emmintrin.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/xmmintrin.h \
+ /usr/include/c++/13.2.1/thread /usr/include/c++/13.2.1/bits/std_thread.h \
+ /usr/include/c++/13.2.1/bits/unique_ptr.h \
+ /usr/include/c++/13.2.1/bits/this_thread_sleep.h \
+ /usr/include/c++/13.2.1/bits/chrono.h /usr/include/c++/13.2.1/ratio \
+ /usr/include/c++/13.2.1/bits/parse_numbers.h /usr/include/unistd.h \
+ /usr/include/bits/posix_opt.h /usr/include/bits/environments.h \
+ /usr/include/bits/confname.h /usr/include/bits/getopt_posix.h \
+ /usr/include/bits/getopt_core.h /usr/include/bits/unistd_ext.h \
+ /usr/include/linux/close_range.h /usr/include/SDL2/SDL.h \
+ /usr/include/SDL2/SDL_main.h /usr/include/SDL2/SDL_stdinc.h \
+ /usr/include/SDL2/SDL_config.h /usr/include/SDL2/SDL_platform.h \
+ /usr/include/SDL2/begin_code.h /usr/include/SDL2/close_code.h \
+ /usr/include/inttypes.h /usr/include/SDL2/SDL_assert.h \
+ /usr/include/SDL2/SDL_atomic.h /usr/include/SDL2/SDL_audio.h \
+ /usr/include/SDL2/SDL_error.h /usr/include/SDL2/SDL_endian.h \
+ /usr/include/SDL2/SDL_mutex.h /usr/include/SDL2/SDL_thread.h \
+ /usr/include/SDL2/SDL_rwops.h /usr/include/SDL2/SDL_clipboard.h \
+ /usr/include/SDL2/SDL_cpuinfo.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/immintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/x86gprintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/ia32intrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/adxintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/bmiintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/bmi2intrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/cetintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/cldemoteintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/clflushoptintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/clwbintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/clzerointrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/cmpccxaddintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/enqcmdintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/fxsrintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/lzcntintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/lwpintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/movdirintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/mwaitintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/mwaitxintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/pconfigintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/popcntintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/pkuintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/prfchiintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/raointintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/rdseedintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/rtmintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/serializeintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/sgxintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/tbmintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/tsxldtrkintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/uintrintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/waitpkgintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/wbnoinvdintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/xsaveintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/xsavecintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/xsaveoptintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/xsavesintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/xtestintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/hresetintrin.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/mmintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/xmmintrin.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/mm_malloc.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/emmintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/pmmintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/tmmintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/smmintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/wmmintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avxintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avxvnniintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avxifmaintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avxvnniint8intrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx2intrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512fintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512erintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512pfintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512cdintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512vlintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512bwintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512dqintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512vlbwintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512vldqintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512ifmaintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512ifmavlintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512vbmiintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512vbmivlintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx5124fmapsintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx5124vnniwintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512vpopcntdqintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512vbmi2intrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512vbmi2vlintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512vnniintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512vnnivlintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512vpopcntdqvlintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512bitalgintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512vp2intersectintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512vp2intersectvlintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512fp16intrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512fp16vlintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/shaintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/fmaintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/f16cintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/gfniintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/vaesintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/vpclmulqdqintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512bf16vlintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avx512bf16intrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/avxneconvertintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/amxtileintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/amxint8intrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/amxbf16intrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/amxcomplexintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/prfchwintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/keylockerintrin.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include/amxfp16intrin.h \
+ /usr/include/SDL2/SDL_events.h /usr/include/SDL2/SDL_video.h \
+ /usr/include/SDL2/SDL_pixels.h /usr/include/SDL2/SDL_rect.h \
+ /usr/include/SDL2/SDL_surface.h /usr/include/SDL2/SDL_blendmode.h \
+ /usr/include/SDL2/SDL_keyboard.h /usr/include/SDL2/SDL_keycode.h \
+ /usr/include/SDL2/SDL_scancode.h /usr/include/SDL2/SDL_mouse.h \
+ /usr/include/SDL2/SDL_joystick.h /usr/include/SDL2/SDL_guid.h \
+ /usr/include/SDL2/SDL_gamecontroller.h /usr/include/SDL2/SDL_sensor.h \
+ /usr/include/SDL2/SDL_quit.h /usr/include/SDL2/SDL_gesture.h \
+ /usr/include/SDL2/SDL_touch.h /usr/include/SDL2/SDL_filesystem.h \
+ /usr/include/SDL2/SDL_haptic.h /usr/include/SDL2/SDL_hidapi.h \
+ /usr/include/SDL2/SDL_hints.h /usr/include/SDL2/SDL_loadso.h \
+ /usr/include/SDL2/SDL_log.h /usr/include/SDL2/SDL_messagebox.h \
+ /usr/include/SDL2/SDL_metal.h /usr/include/SDL2/SDL_power.h \
+ /usr/include/SDL2/SDL_render.h /usr/include/SDL2/SDL_shape.h \
+ /usr/include/SDL2/SDL_system.h /usr/include/SDL2/SDL_timer.h \
+ /usr/include/SDL2/SDL_version.h /usr/include/SDL2/SDL_locale.h \
+ /usr/include/SDL2/SDL_misc.h \
+ /run/media/terminus/HDD/TCC_LEB/submodules/stb/stb_image.h \
  /run/media/terminus/HDD/TCC_LEB/submodules/stb/stb_image_write.h \
  /run/media/terminus/HDD/TCC_LEB/submodules/dj_opengl/dj_opengl.h \
  /run/media/terminus/HDD/TCC_LEB/terrain/dj_algebra.h \

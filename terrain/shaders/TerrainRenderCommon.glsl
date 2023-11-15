@@ -320,6 +320,7 @@ VertexAttribute TessellateTriangle(
 }
 
 
+
 /*******************************************************************************
  * ShadeFragment -- Fragement shading routine
  *

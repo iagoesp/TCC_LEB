@@ -34,7 +34,7 @@ out PatchData {
 float LOD(vec3 posV){
     vec3 cam = vec3(inverse(u_ViewProjectionMatrix)[3]);
     float dist = distance(posV, cam);
-    return int(max(2,min(64, log2(log2(dist)))));  
+    return max(1, floor(log2(dist)));  
 }
 
 void main()
