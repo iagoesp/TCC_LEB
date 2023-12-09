@@ -290,11 +290,50 @@ vec4 BarycentricInterpolation(in vec4 v[3], in vec2 u)
     return v[1] + u.x * (v[2] - v[1]) + u.y * (v[0] - v[1]);
 }
 
+float LOD2(vec3 posV){
+    vec3 cam = vec3(inverse(u_ViewProjectionMatrix)[3].xyz);
+    float dist = distance(posV, cam);
+    return pow(2,max(1, int(log(dist)/log(32)))); 
+
+}
 
 
+int LOD(vec3 chunkPos)
+{
+    float lodNear = 1.f;
+    float lodFar = 1024.f;
+    float chunkSize = 5.f;
+    vec3 cameraPos = vec3(inverse(u_ViewProjectionMatrix)[3].xyz);
 
+	vec3 realPos = chunkPos;
 
+    float dist = distance(cameraPos, realPos);
 
+    if (dist < lodFar)
+    {
+        //full detail
+        if (dist < lodNear)
+        {
+            return int(512 * TERRAIN_PATCH_TESS_FACTOR);
+        }
+        //interpolate
+        else
+        {
+            float gap = lodFar - lodNear;
+            float perc = lodFar - dist;
+
+            float levelGap = 5.f-1.f;
+
+            return int((perc/gap*levelGap) + 1.f);
+        }
+    }
+    //least detail
+    else
+        return int(1);
+
+        //float invDistance = (terrainSize-distance(cameraPos, realPos) + ivd) / float(terrainSize);
+        //return int(max(invDistance * maxLevel * lod, minLevel));
+}
 /*******************************************************************************
  * GenerateVertex -- Computes the final vertex position
  *
@@ -398,7 +437,7 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos)
     vec3 shading = (d / 3.14159) * albedo;
 #endif
 
-    return vec4(shading * extinction + inscatter * 0.5, 1);
+    return vec4(shading * extinction +  inscatter * 0.5, 1);
 #elif SHADING_NORMALS
 
     return vec4(abs(n), 1);

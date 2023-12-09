@@ -31,12 +31,6 @@ out PatchData {
 } o_Patch[];
 
 
-float LOD(vec3 posV){
-    vec3 cam = vec3(inverse(u_ViewProjectionMatrix)[3]);
-    float dist = distance(posV, cam);
-    return max(1, floor(log2(dist)));  
-}
-
 void main()
 {
     const int cbtID = 0;
@@ -87,7 +81,7 @@ void main()
         gl_TessLevelOuter[0] = 
         gl_TessLevelOuter[1] =
         //gl_TessLevelOuter[2] = TERRAIN_PATCH_TESS_FACTOR;
-        gl_TessLevelOuter[2] = LOD((triangleVertices[0].xyz + triangleVertices[1].xyz + triangleVertices[2].xyz)/3.f);
+        gl_TessLevelOuter[2] = LOD2((triangleVertices[0].xyz + triangleVertices[1].xyz + triangleVertices[2].xyz)/3.f);
 
         
     } else {

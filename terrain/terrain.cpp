@@ -96,7 +96,7 @@ struct FramebufferManager {
 
 // -----------------------------------------------------------------------------
 // Camera Manager
-#define INIT_POS dja::vec3(1000.0f, +2000.5f, 1000.0f)
+#define INIT_POS dja::vec3(-24000.0f, +1000.5f, 24000.0f)
 enum {
     TONEMAP_UNCHARTED2,
     TONEMAP_FILMIC,
@@ -125,7 +125,7 @@ struct CameraManager {
     TONEMAP_ACES,
     INIT_POS,
     dja::mat3(1.0f),
-    -0.8f, -0.4f,
+    1.0f, 0.5f,
     {
         0
     }
@@ -159,21 +159,21 @@ int noise = RIDGEDFBM;
 
 int mountain_inverse = MONTANHA;
 
-int scaleTER = 6;
-int seeds = 1000;
+int scaleTER = 11;
+int seeds = 22;
 
 
 
 int octavesFBM = 14;
-float wavelengthFBM = 4.5f;
-float lacunarityFBM = 1.94595f;
+float wavelengthFBM = 4.f;
+float lacunarityFBM = 1.8387;
 float gainFBM = 0.5f;
 int getValleyFBM = 2;
 
-float ridgeOffset = 2.8f;
-int getValley = 2;
+float ridgeOffset = 1.1f;
+int getValley = 1;
 int octavesRMF = 10;
-float wavelengthRMF = 0.6f;
+float wavelengthRMF = 0.1f;
 float lacunarityRMF = 2.0f;
 float gainRMF = 0.5f;
 // -----------------------------------------------------------------------------
@@ -200,7 +200,7 @@ struct TerrainManager {
     {std::string(PATH_TO_ASSET_DIRECTORY "./kauai.png"),
      SIZE_TERRAIN,SIZE_TERRAIN, 0.0f, 2000.0f,
      2.0f},
-    METHOD_CS,
+    METHOD_TS,
     SHADING_DIFFUSE,
     3,
     7.0f,
@@ -1299,49 +1299,77 @@ float fBm(const glm::vec2 pos, const int octaveCount, float lacunarity, float ga
 }
 
 
-float calcfBmNoise(glm::vec3 pos){
-    float noiseFBM = 0.f;
-    float f = scaleTER*getValleyFBM;
-    noiseFBM = Simplex::fBm(scaleTER*wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM)/f;
-    return noiseFBM;
+float calcfBmNoise(glm::vec3 pos, float H)
+{    
+    float G = exp2(-H);
+    float f = wavelengthFBM;
+    float a = lacunarityFBM;
+    float t = 0.5f;
+    for( int i=0; i<octavesFBM; i++ )
+    {
+        t += a*Simplex::noise(f*pos);
+        f *= 2.0f;
+        a *= G;
+    }
+    return t;
 }
+
 
 float clamp(float n, float lower, float upper) {
   return std::max(lower, std::min(n, upper));
 }
 
 float calcSurfaceNoise(glm::vec3 pos){
+    //Declaração das variáveis referentes aos valores de ruído do
+    // ridgedMF e do fBm
     float noiseRMF = 0.f;
     float noiseFBM = 0.f;
     float fBm_Ampscale = pow(gainFBM, octavesRMF);
     float fBm_UVScale  = pow(lacunarityFBM, octavesRMF);
+    //Se utilizar a função ridgedMF
     if(noise == RIDGED || noise == RIDGEDFBM){
         noiseRMF = Simplex::ridgedMF(wavelengthRMF*pos, ridgeOffset, octavesRMF, lacunarityRMF, gainRMF);
-        if(getValley > 1)
-            noiseRMF = pow(noiseRMF, getValley);
-
+/*         LOG("noiseRMF %f\n", noiseRMF);
+*/        if(getValley > 1)
+                noiseRMF = pow(noiseRMF, getValley);
+/*             LOG("noiseRMF %f\n", noiseRMF);
+ */
         if(noise == RIDGED)
             return noiseRMF;
         
         noiseFBM = Simplex::fBm(wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM);
+        //noiseFBM = calcfBmNoise(pos, 0.5f);
 
+        //Obtém-se relevo de vale. O getValley pode ser atribuído no
+        //intervalo de 1 a 7. Quanto maior o valor, mais plano.
+        /* LOG("\nnoiseFBM %f\n", noiseFBM); */
         if(getValleyFBM > 1)
             noiseFBM = pow(noiseFBM, getValleyFBM);
-        return noiseRMF + noiseFBM*noiseRMF;
+/*             LOG("noiseFBM %f\n\n", noiseFBM);
+ */        
+        //Soma dos valores dos ruídos obtidos
+        return noiseFBM + (1+noiseFBM)*noiseRMF;
     }
- 
+    
+    //Se utilizar somente a função iqfBm
     noiseFBM = Simplex::fBm(wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM);
+    //noiseFBM = calcfBmNoise(pos,0.5f);
 
+
+    //Obtém-se relevo de vale. O getValleyFBM pode ser atribuído
+    //no intervalo de 1 a 7. Quanto maior o valor, mais plano.
     if(getValleyFBM > 1)
         noiseFBM = pow(noiseFBM, getValleyFBM);
+
+    //Retorna o valor somente do ruido iqFbm
 
     return noiseFBM;
 }
 
-void update(int h, int size, float tamAmostra, float *zf_arr){
+void update(int h, int h1, int w, float tamAmostra, float *zf_arr){
     //LOG("De %i\n", h);
-     for (int j = h; j < h + size; j++){
-        for (int i = 0; i < size*4; i++) {
+     for (int j = h; j < h1; j++){
+        for (int i = 0; i < w; i++) {
 
             float h = -2000.5f;
             //glm::vec2 pos = glm::vec2(float(i*tamAmostra), float(j*tamAmostra));
@@ -1354,13 +1382,13 @@ void update(int h, int size, float tamAmostra, float *zf_arr){
             else if(mountain_inverse == INVERSO)
                 h = 1.f - sn;
             
-            h += calcfBmNoise(pos);
+            //h += calcfBmNoise(pos);
             //h *= g_terrain.dmap.scale;
             int trunc = h*1000000;
             h = float(trunc)/1000000.f;
 
             
-            zf_arr[i + size*4*j] = h;
+            zf_arr[i + w*j] = h;
         }
     }
 }
@@ -1402,8 +1430,8 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
 /*     int w = g_terrain.dmap.width/10;
     int h = g_terrain.dmap.height/10; */
     int size = pow(2,12);
-    int w = size*4;
-    LOG("Tamanho da Malha: %i\n", w);
+    int w = size;
+    int part = size / 8;
     int h = w;
 
     int mipcnt = djgt__mipcnt(w, h, 1);
@@ -1414,25 +1442,69 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     std::vector<float> normals(w*h*2);
     float *zf_arr = new float [w*h];
     
-    float tamAmostra = w / (float)(pow(10,scaleTER));
+    float tamAmostra = 0.0005;//1 / (float)(pow(2,scaleTER));
     //LOG("Loading --------------tamAmostra%f\n", tamAmostra);
     std::vector<glm::vec3> positions(w*h);
     Simplex::seed(seeds);
+    LOG("Size: %i\n", part);
+    LOG("Tamanho da Malha: %i\n", w);
+    int sz0 = part*0;     
+    int sz1 = part*1;
+    int sz2 = part*2;
+    int sz3 = part*3;
+    int sz4 = part*4;     
+    int sz5 = part*5;
+    int sz6 = part*6;
+    int sz7 = part*7;
 
-    int sz0 = size*0;     
-    int sz1 = size*1;
-    int sz2 = size*2;
-    int sz3 = size*3;
+    /*  
+    int sz10 = part*0;     
+    int sz11 = part*1;
+    int sz12 = part*2;
+    int sz13 = part*3;
+    int sz14 = part*4;     
+    int sz15 = part*5;
+    int sz16 = part*6;
+    int sz17 = part*7;
+    */
 
-    std::thread th1(update, sz0, size, tamAmostra, zf_arr);
-    std::thread th2(update, sz1, size, tamAmostra, zf_arr);
-    std::thread th3(update, sz2, size, tamAmostra, zf_arr);
-    std::thread th4(update, sz3, size, tamAmostra, zf_arr);
+    std::thread th1(update, sz0, sz1, w, tamAmostra, zf_arr);
+    std::thread th2(update, sz1, sz2, w, tamAmostra, zf_arr);
+    std::thread th3(update, sz2, sz3, w, tamAmostra, zf_arr);
+    std::thread th4(update, sz3, sz4, w, tamAmostra, zf_arr);
+    std::thread th5(update, sz4, sz5, w, tamAmostra, zf_arr);
+    std::thread th6(update, sz5, sz6, w, tamAmostra, zf_arr);
+    std::thread th7(update, sz6, sz7, w, tamAmostra, zf_arr);
+    std::thread th8(update, sz7, w, w, tamAmostra, zf_arr);
+
+    /*
+    std::thread th11(update, sz10, sz11, w, tamAmostra, zf_arr);
+    std::thread th12(update, sz11, sz12, w, tamAmostra, zf_arr);
+    std::thread th13(update, sz12, sz13, w, tamAmostra, zf_arr);
+    std::thread th14(update, sz13, sz14, w, tamAmostra, zf_arr);
+    std::thread th15(update, sz14, sz15, w, tamAmostra, zf_arr);
+    std::thread th16(update, sz15, sz16, w, tamAmostra, zf_arr);
+    std::thread th17(update, sz16, sz17, w, tamAmostra, zf_arr);
+    std::thread th18(update, sz17, w, w, tamAmostra, zf_arr);
+    */
     th1.join();
     th2.join();
     th3.join();
     th4.join();
-
+    th5.join();
+    th6.join();
+    th7.join();
+    th8.join();
+    /*  
+    th11.join();
+    th12.join();
+    th13.join();
+    th14.join();
+    th15.join();
+    th16.join();
+    th17.join();
+    th18.join();
+    */
   
     for (int j = 0; j < h; ++j){
         for (int i = 0; i < w; ++i) {
@@ -2975,7 +3047,7 @@ void renderViewer()
             if (ImGui::Combo("Surface Noise", &noise, &eSurfaceNoise[0], BUFFER_SIZE(eSurfaceNoise))) {
                 LOG("Surface Noise = %i\n", noise);
             }
-            if (ImGui::SliderInt("Scale", &scaleTER, 0, 10)) {
+            if (ImGui::SliderInt("Scale", &scaleTER, 0, 15)) {
                 LOG("Amostra = %i\n", scaleTER);
             }
         }
@@ -2996,7 +3068,7 @@ void renderViewer()
 
             if (ImGui::SliderFloat("Wavelength", &wavelengthRMF, 0.f, 10.f, "%0.01f"))
                 LOG("Wavelength = %f\n", wavelengthRMF);
-            if (ImGui::SliderFloat("Lacunarity", &lacunarityRMF, 0.f, 32.f, "%0.5f"))
+            if (ImGui::SliderFloat("Lacunarity", &lacunarityRMF, 0.f, 16.f, "%0.5f"))
                 LOG("Lacunarity = %f\n", lacunarityRMF);
             if (ImGui::SliderFloat("Gain", &gainRMF, 0.f, 1.f, "%0.01f"))
                 LOG("Gain = %f\n", gainRMF);
@@ -3015,18 +3087,18 @@ void renderViewer()
                 seeds = 1000;
                 mountain_inverse = MONTANHA;
                 noise = RIDGEDFBM;
-                scaleTER = 6;
+                scaleTER = 8;
 
                 octavesFBM = 14;
-                wavelengthFBM = 1.0f;
-                lacunarityFBM = 1.94595;
+                wavelengthFBM = 4.5f;
+                lacunarityFBM = 2.37030;
                 gainFBM = 0.5f;
-                getValleyFBM = 1;
+                getValleyFBM = 2;
 
-                ridgeOffset = 2.5f;
+                ridgeOffset = 2.8f;
                 getValley = 2;
-                octavesRMF = 8;
-                wavelengthRMF = 0.3f;
+                octavesRMF = 10;
+                wavelengthRMF = 0.5f;
                 lacunarityRMF = 2.0f;
                 gainRMF = 0.5f;
                 LoadDmapTexture();
@@ -3035,21 +3107,21 @@ void renderViewer()
             ImGui::SameLine();
 
             if (ImGui::Button("Flat")){
-                seeds = 54;
+                seeds = 22;
                 mountain_inverse = MONTANHA;
-                scaleTER = 7;
+                scaleTER = 11;
 
-                octavesFBM = 14;
-                wavelengthFBM = 4.f;
-                lacunarityFBM = 2.25f;
+                octavesFBM = 12;
+                wavelengthFBM = 0.5f;
+                lacunarityFBM = 1.94595;
                 gainFBM = 0.5f;
                 getValleyFBM = 1;
 
-                ridgeOffset = 1.0f;
-                getValley = 4;
-                octavesRMF = 2;
-                wavelengthRMF = 1.f;
-                lacunarityRMF = 2.0f;
+                ridgeOffset = 1.1f;
+                getValley = 1;
+                octavesRMF = 10;
+                wavelengthRMF = 0.1f;
+                lacunarityRMF = 2.16216;
                 gainRMF = 0.5f;
                 LoadDmapTexture();
             }
@@ -3059,18 +3131,18 @@ void renderViewer()
             if (ImGui::Button("Valley")){
                 seeds = 22;
                 mountain_inverse = MONTANHA;
-                scaleTER = 6;
+                scaleTER = 11;
 
                 octavesFBM = 14;
-                wavelengthFBM = 4.5f;
-                lacunarityFBM = 2.1621;
+                wavelengthFBM = 4.f;
+                lacunarityFBM = 1.8387;
                 gainFBM = 0.5f;
-                getValleyFBM = 1;
+                getValleyFBM = 2;
 
-                ridgeOffset = 2.8f;
-                getValley = 2;
+                ridgeOffset = 1.1f;
+                getValley = 1;
                 octavesRMF = 10;
-                wavelengthRMF = 1.3f;
+                wavelengthRMF = 0.1f;
                 lacunarityRMF = 2.0f;
                 gainRMF = 0.5f;
                 LoadDmapTexture();
@@ -3078,22 +3150,22 @@ void renderViewer()
             ImGui::SameLine();
 
             if (ImGui::Button("Mountains")){
-                seeds = 54;
+                seeds = 22;
                 mountain_inverse = MONTANHA;
-                scaleTER = 8;
+                scaleTER = 11;
 
-                octavesFBM = 14;
-                wavelengthFBM = 6.1f;
-                lacunarityFBM = 1.94595;
+                octavesFBM = 12;
+                wavelengthFBM = 4.5f;
+                lacunarityFBM = 2.05405f;
                 gainFBM = 0.5f;
                 getValleyFBM = 1;
 
-                ridgeOffset = 2.8f;
+                ridgeOffset = 1.1f;
                 getValley = 1;
-                octavesRMF = 8;
-                wavelengthRMF = 4.2f;
+                octavesRMF = 10.f;
+                wavelengthRMF = 2.5f;
                 lacunarityRMF = 1.93103;
-                gainRMF = 0.6f;
+                gainRMF = 0.5f;
                 LoadDmapTexture();
             }
         }
@@ -3106,9 +3178,9 @@ void renderViewer()
         {
             if (ImGui::SliderInt("Octaves", &octavesFBM, 0, 20))
                 LOG("OctavesFBM = %f\n", octavesFBM);
-            if (ImGui::SliderFloat("Wavelength", &wavelengthFBM, 0.f, 12.f, "%.01f"))
+            if (ImGui::SliderFloat("Wavelength", &wavelengthFBM, 0.f, 8.f, "%.01f"))
                 LOG("WavelengthFBM = %f\n", wavelengthFBM);
-            if (ImGui::SliderFloat("Lacunarity", &lacunarityFBM, 0.f, 32.f, "%0.5f"))
+            if (ImGui::SliderFloat("Lacunarity", &lacunarityFBM, 0.f, 16.f, "%0.5f"))
                 LOG("LacunarityFBM = %f\n", lacunarityFBM);
             if (ImGui::SliderFloat("Gain", &gainFBM, 0.f, 1.f, "%0.01f"))
                 LOG("GainFBM = %f\n", gainFBM);            
