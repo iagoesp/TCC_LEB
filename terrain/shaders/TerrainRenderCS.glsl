@@ -15,6 +15,7 @@ by Jonathan Dupuy
 layout(location = 0) in vec2 i_VertexPos;
 layout(location = 0) out vec2 o_TexCoord;
 layout(location = 1) out vec3 o_WorldPos;
+layout(location = 2) out vec3 o_Normal;
 
 void main()
 {
@@ -45,6 +46,10 @@ void main()
 #endif
     o_TexCoord  = attrib.texCoord;
     o_WorldPos  = (u_ModelMatrix * attrib.position).xyz;
+    o_Normal = vec3(1.0);
+    if(ComputeDerivateNormals())
+        o_Normal = abs(DerivativeFBM(o_WorldPos.xyz, 16, 1.95f, 0.5f).yzw);
+
 }
 #endif
 
@@ -56,10 +61,11 @@ void main()
 #ifdef FRAGMENT_SHADER
 layout(location = 0) in vec2 i_TexCoord;
 layout(location = 1) in vec3 i_WorldPos;
+layout(location = 2) in vec3 i_Normal;
 layout(location = 0) out vec4 o_FragColor;
 
 void main()
 {
-    o_FragColor = ShadeFragment(i_TexCoord, i_WorldPos);
+    o_FragColor = ShadeFragment(i_TexCoord, i_WorldPos, i_Normal);
 }
 #endif

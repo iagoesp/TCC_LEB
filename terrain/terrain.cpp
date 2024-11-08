@@ -27,18 +27,6 @@
 #include<unistd.h>
 #include <SDL2/SDL.h>
 
-struct Particle{
-  //Construct Particle at Position
-  Particle(glm::vec2 _pos){ pos = _pos; }
-
-  glm::vec2 pos;
-  glm::vec2 speed = glm::vec2(0.0);
-
-  float volume = 1.0;   //This will vary in time
-  float sediment = 0.0; //Fraction of Volume that is Sediment!
-};
-
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -120,12 +108,12 @@ struct CameraManager {
         int triangleCount;
     } sphere;
 } g_camera = {
-    45.f, 1.0f, 64000.f,
+    80.f, 1.0f, 64000.f,
     PROJECTION_RECTILINEAR,
     TONEMAP_ACES,
     INIT_POS,
     dja::mat3(1.0f),
-    1.0f, 0.5f,
+    -0.8f, -0.4f,
     {
         0
     }
@@ -155,26 +143,46 @@ enum {
     RIDGEDFBM,
 };
 
-int noise = RIDGEDFBM;
+static ImVec4 colorig;
+bool derivative_normals = false;
+float color0[3] = {200.f/255.f, 181.f/255.f,152.f/255.f};
+float color1[3] = {219.f/255.f, 153.f/255.f, 72.f/255.f};
+float color2[3] = {133.f/255.f, 40.f/255.f, 0.f/255.f};
+float color3[3] = {255.f/255.f, 148.f/255.f, 60.f/255.f};
+float color_backGround0[3] = {200.f/255.f, 181.f/255.f,152.f/255.f};
+float color_backGround1[3] = {219.f/255.f, 153.f/255.f, 72.f/255.f};
+float color_backGround2[3] = {133.f/255.f, 40.f/255.f, 0.f/255.f};
+float color_backGround3[3] = {255.f/255.f, 148.f/255.f, 60.f/255.f};
+float height3 = 5256.0f;
+float height2 = 4791.0f;
+float height1 = 3396.0f;
+float height0 = 1500.0f;
+float noiseH3 = 117.f;
+float noiseH2 = 970.f;
+float noiseH1 = 3204.f;
+float noiseH0 = 10000.f;
+
+int noise = FBM;
 
 int mountain_inverse = MONTANHA;
 
-int scaleTER = 11;
-int seeds = 22;
+int scaleTER = 10;
+int seeds = 42;
 
 
 
-int octavesFBM = 14;
-float wavelengthFBM = 4.f;
-float lacunarityFBM = 1.8387;
+
+float getValleyFBM = 2.5f;
+int octavesFBM = 16;
+float wavelengthFBM = 0.6f;
+float lacunarityFBM = 1.84f;
 float gainFBM = 0.5f;
-int getValleyFBM = 2;
 
 float ridgeOffset = 1.1f;
-int getValley = 1;
-int octavesRMF = 10;
+float getValleyRMF = 1;
+int octavesRMF = 16;
 float wavelengthRMF = 0.1f;
-float lacunarityRMF = 2.0f;
+float lacunarityRMF = 1.95f;
 float gainRMF = 0.5f;
 // -----------------------------------------------------------------------------
 // Terrain Manager
@@ -199,8 +207,8 @@ struct TerrainManager {
     {true, true, false, false, true},
     {std::string(PATH_TO_ASSET_DIRECTORY "./kauai.png"),
      SIZE_TERRAIN,SIZE_TERRAIN, 0.0f, 2000.0f,
-     2.0f},
-    METHOD_TS,
+     3.0f},
+    METHOD_CS,
     SHADING_DIFFUSE,
     3,
     7.0f,
@@ -343,7 +351,6 @@ enum {
 enum {
     UNIFORM_VIEWER_FRAMEBUFFER_SAMPLER,
     UNIFORM_VIEWER_GAMMA,
-
     UNIFORM_TERRAIN_DMAP_SAMPLER,
     UNIFORM_TERRAIN_SMAP_SAMPLER,
     UNIFORM_TERRAIN_DMAP_ROCK_SAMPLER,
@@ -356,6 +363,19 @@ enum {
     UNIFORM_TERRAIN_INSCATTER_SAMPLER,
     UNIFORM_TERRAIN_IRRADIANCE_SAMPLER,
     UNIFORM_TERRAIN_TRANSMITTANCE_SAMPLER,
+    UNIFORM_TERRAIN_HEIGHT0,
+    UNIFORM_TERRAIN_HEIGHT1,
+    UNIFORM_TERRAIN_HEIGHT2,
+    UNIFORM_TERRAIN_HEIGHT3,
+    UNIFORM_TERRAIN_COLORH0,
+    UNIFORM_TERRAIN_COLORH1,
+    UNIFORM_TERRAIN_COLORH2,
+    UNIFORM_TERRAIN_COLORH3,
+    UNIFORM_TERRAIN_NOISEH0,
+    UNIFORM_TERRAIN_NOISEH1,
+    UNIFORM_TERRAIN_NOISEH2,
+    UNIFORM_TERRAIN_NOISEH3,
+    UNIFORM_TERRAIN_DERIVATIVENORMALS,
 
     UNIFORM_SPLIT_DMAP_SAMPLER,
     UNIFORM_SPLIT_SMAP_SAMPLER,
@@ -369,6 +389,19 @@ enum {
     UNIFORM_SPLIT_INSCATTER_SAMPLER,
     UNIFORM_SPLIT_IRRADIANCE_SAMPLER,
     UNIFORM_SPLIT_TRANSMITTANCE_SAMPLER,
+    UNIFORM_SPLIT_HEIGHT0,
+    UNIFORM_SPLIT_HEIGHT1,
+    UNIFORM_SPLIT_HEIGHT2,
+    UNIFORM_SPLIT_HEIGHT3,
+    UNIFORM_SPLIT_COLORH0,
+    UNIFORM_SPLIT_COLORH1,
+    UNIFORM_SPLIT_COLORH2,
+    UNIFORM_SPLIT_COLORH3,
+    UNIFORM_SPLIT_NOISEH0,
+    UNIFORM_SPLIT_NOISEH1,
+    UNIFORM_SPLIT_NOISEH2,
+    UNIFORM_SPLIT_NOISEH3,
+    UNIFORM_SPLIT_DERIVATIVENORMALS,
 
     UNIFORM_MERGE_DMAP_SAMPLER,
     UNIFORM_MERGE_SMAP_SAMPLER,
@@ -382,6 +415,19 @@ enum {
     UNIFORM_MERGE_INSCATTER_SAMPLER,
     UNIFORM_MERGE_IRRADIANCE_SAMPLER,
     UNIFORM_MERGE_TRANSMITTANCE_SAMPLER,
+    UNIFORM_MERGE_HEIGHT0,
+    UNIFORM_MERGE_HEIGHT1,
+    UNIFORM_MERGE_HEIGHT2,
+    UNIFORM_MERGE_HEIGHT3,
+    UNIFORM_MERGE_COLORH0,
+    UNIFORM_MERGE_COLORH1,
+    UNIFORM_MERGE_COLORH2,
+    UNIFORM_MERGE_COLORH3,
+    UNIFORM_MERGE_NOISEH0,
+    UNIFORM_MERGE_NOISEH1,
+    UNIFORM_MERGE_NOISEH2,
+    UNIFORM_MERGE_NOISEH3,
+    UNIFORM_MERGE_DERIVATIVENORMALS,
 
     UNIFORM_RENDER_DMAP_SAMPLER,
     UNIFORM_RENDER_SMAP_SAMPLER,
@@ -395,6 +441,19 @@ enum {
     UNIFORM_RENDER_INSCATTER_SAMPLER,
     UNIFORM_RENDER_IRRADIANCE_SAMPLER,
     UNIFORM_RENDER_TRANSMITTANCE_SAMPLER,
+    UNIFORM_RENDER_HEIGHT0,
+    UNIFORM_RENDER_HEIGHT1,
+    UNIFORM_RENDER_HEIGHT2,
+    UNIFORM_RENDER_HEIGHT3,
+    UNIFORM_RENDER_COLORH0,
+    UNIFORM_RENDER_COLORH1,
+    UNIFORM_RENDER_COLORH2,
+    UNIFORM_RENDER_COLORH3,
+    UNIFORM_RENDER_NOISEH0,
+    UNIFORM_RENDER_NOISEH1,
+    UNIFORM_RENDER_NOISEH2,
+    UNIFORM_RENDER_NOISEH3,
+    UNIFORM_RENDER_DERIVATIVENORMALS,
 
     UNIFORM_TOPVIEW_DMAP_SAMPLER,
     UNIFORM_TOPVIEW_DMAP_FACTOR,
@@ -560,6 +619,20 @@ void ConfigureTerrainProgram(GLuint glp, GLuint offset)
     float lodFactor = computeLodFactor();
 
 
+    glProgramUniform1f(glp, g_gl.uniforms[UNIFORM_TERRAIN_HEIGHT0 + offset], height0);
+    glProgramUniform1f(glp, g_gl.uniforms[UNIFORM_TERRAIN_HEIGHT1 + offset], height1);
+    glProgramUniform1f(glp, g_gl.uniforms[UNIFORM_TERRAIN_HEIGHT2 + offset], height2);
+    glProgramUniform1f(glp, g_gl.uniforms[UNIFORM_TERRAIN_HEIGHT3 + offset], height3);
+    glProgramUniform1f(glp, g_gl.uniforms[UNIFORM_TERRAIN_NOISEH0 + offset], noiseH0);
+    glProgramUniform1f(glp, g_gl.uniforms[UNIFORM_TERRAIN_NOISEH1 + offset], noiseH1);
+    glProgramUniform1f(glp, g_gl.uniforms[UNIFORM_TERRAIN_NOISEH2 + offset], noiseH2);
+    glProgramUniform1f(glp, g_gl.uniforms[UNIFORM_TERRAIN_NOISEH3 + offset], noiseH3);
+    
+    glProgramUniform3f(glp, g_gl.uniforms[UNIFORM_TERRAIN_COLORH0 + offset], color_backGround0[0],color_backGround0[1],color_backGround0[2]);
+    glProgramUniform3f(glp, g_gl.uniforms[UNIFORM_TERRAIN_COLORH1 + offset], color_backGround1[0],color_backGround1[1],color_backGround1[2]);
+    glProgramUniform3f(glp, g_gl.uniforms[UNIFORM_TERRAIN_COLORH2 + offset], color_backGround2[0],color_backGround2[1],color_backGround2[2]);
+    glProgramUniform3f(glp, g_gl.uniforms[UNIFORM_TERRAIN_COLORH3 + offset], color_backGround3[0],color_backGround3[1],color_backGround3[2]);
+    glProgramUniform1i(glp, g_gl.uniforms[UNIFORM_TERRAIN_DERIVATIVENORMALS + offset], derivative_normals);
     glProgramUniform1f(glp,
         g_gl.uniforms[UNIFORM_TERRAIN_DMAP_FACTOR + offset],
         g_terrain.dmap.scale);
@@ -797,6 +870,35 @@ bool LoadTerrainProgram(GLuint *glp, const char *flag, GLuint uniformOffset)
     }
     djgp_release(djp);
 
+    g_gl.uniforms[UNIFORM_TERRAIN_HEIGHT0 + uniformOffset] =
+        glGetUniformLocation(*glp, "u_Height0");
+    g_gl.uniforms[UNIFORM_TERRAIN_HEIGHT1 + uniformOffset] =
+        glGetUniformLocation(*glp, "u_Height1");
+    g_gl.uniforms[UNIFORM_TERRAIN_HEIGHT2 + uniformOffset] =
+        glGetUniformLocation(*glp, "u_Height2");
+    g_gl.uniforms[UNIFORM_TERRAIN_HEIGHT3 + uniformOffset] =
+        glGetUniformLocation(*glp, "u_Height3");
+///*     
+    g_gl.uniforms[UNIFORM_TERRAIN_COLORH0 + uniformOffset] =
+        glGetUniformLocation(*glp, "u_ColorH0");
+    g_gl.uniforms[UNIFORM_TERRAIN_COLORH1 + uniformOffset] =
+        glGetUniformLocation(*glp, "u_ColorH1");
+    g_gl.uniforms[UNIFORM_TERRAIN_COLORH2 + uniformOffset] =
+        glGetUniformLocation(*glp, "u_ColorH2");
+    g_gl.uniforms[UNIFORM_TERRAIN_COLORH3 + uniformOffset] =
+        glGetUniformLocation(*glp, "u_ColorH3");
+    g_gl.uniforms[UNIFORM_TERRAIN_NOISEH0 + uniformOffset] =
+        glGetUniformLocation(*glp, "u_NoiseH0");
+    g_gl.uniforms[UNIFORM_TERRAIN_NOISEH1 + uniformOffset] =
+        glGetUniformLocation(*glp, "u_NoiseH1");
+    g_gl.uniforms[UNIFORM_TERRAIN_NOISEH2 + uniformOffset] =
+        glGetUniformLocation(*glp, "u_NoiseH2");
+    g_gl.uniforms[UNIFORM_TERRAIN_NOISEH3 + uniformOffset] =
+        glGetUniformLocation(*glp, "u_NoiseH3");
+    g_gl.uniforms[UNIFORM_TERRAIN_DERIVATIVENORMALS + uniformOffset] =
+        glGetUniformLocation(*glp, "u_DerivativeNormals");
+        
+       // */
     g_gl.uniforms[UNIFORM_TERRAIN_DMAP_FACTOR + uniformOffset] =
         glGetUniformLocation(*glp, "u_DmapFactor");
     g_gl.uniforms[UNIFORM_TERRAIN_LOD_FACTOR + uniformOffset] =
@@ -1217,45 +1319,65 @@ bool LoadSceneFramebufferTexture()
  *
  * This Loads an RG32F texture used as a slope map
  */
-void LoadNmapTexture16(int smapID, float zf_arr[], std::vector<uint16_t> texels, int w, int h)
-{
 
+void gerarNormal(int smapID, float zf_arr[], std::vector<uint16_t> texels, int w, int h)
+{
     int mipcnt = djgt__mipcnt(w, h, 1);
 
-    std::vector<float> smap(w * h * 2);
+    std::vector<float> smap(w * h * 3);
+
+    float dx = 1.0f / w; // Escala espacial em x
+    float dz = 1.0f / h; // Escala espacial em z
+    float heightScale = 1.0f; // Ajuste conforme necessário
 
     for (int j = 0; j < h; ++j){
         for (int i = 0; i < w; ++i) {
-            
+
             int i1 = std::max(0, i - 1);
             int i2 = std::min(w - 1, i + 1);
             int j1 = std::max(0, j - 1);
             int j2 = std::min(h - 1, j + 1);
+
+            // Obter as alturas dos pixels vizinhos
+            uint16_t z_l = texels[i1 + w * j]; // Esquerda
+            uint16_t z_r = texels[i2 + w * j]; // Direita
+            uint16_t z_b = texels[i + w * j1]; // Baixo
+            uint16_t z_t = texels[i + w * j2]; // Cima
+
+            // Converter para altura real
+            float hL = (float)z_l / 65535.0f * heightScale;
+            float hR = (float)z_r / 65535.0f * heightScale;
+            float hD = (float)z_b / 65535.0f * heightScale;
+            float hU = (float)z_t / 65535.0f * heightScale;
+
+            // Calcular os gradientes
+            float dzdx = (hR - hL) / (2.0f * dx);
+            float dzdz = (hU - hD) / (2.0f * dz);
+
+            // Calcular a normal
+            glm::vec3 normal = glm::normalize(glm::vec3(-dzdx, 1.0f, -dzdz));
+
+            // Mapear de [-1,1] para [0,1] para armazenamento
+            /*smap[    3 * (i + w * j)] = normal.x;
+            smap[1 + 3 * (i + w * j)] = normal.y;
+            smap[2 + 3 * (i + w * j)] = normal.z;
+            */
+            smap[    3 * (i + w * j)] = normal.x * 0.5f + 0.5f;
+            smap[1 + 3 * (i + w * j)] = normal.y * 0.5f + 0.5f;
+            smap[2 + 3 * (i + w * j)] = normal.z * 0.5f + 0.5f;
             
-            uint16_t px_l = texels[i1 + w * j]; // in [0,2^16-1]
-            uint16_t px_r = texels[i2 + w * j]; // in [0,2^16-1]
-            uint16_t px_b = texels[i + w * j1]; // in [0,2^16-1]
-            uint16_t px_t = texels[i + w * j2]; // in [0,2^16-1]
-            float z_l = (float)px_l / 65535.0f; // in [0, 1]
-            float z_r = (float)px_r / 65535.0f; // in [0, 1]
-            float z_b = (float)px_b / 65535.0f; // in [0, 1]
-            float z_t = (float)px_t / 65535.0f; // in [0, 1]
-            float slope_x = (float)w * 0.5f * (z_r - z_l);
-            float slope_y = (float)h * 0.5f * (z_t - z_b); 
+        }
+    }
 
-            smap[    2 * (i + w * j)] = slope_x;
-            smap[1 + 2 * (i + w * j)] = slope_y;
-        }  
-    } 
-
+    // Criar e carregar a textura de normal
     if (glIsTexture(g_gl.textures[smapID]))
         glDeleteTextures(1, &g_gl.textures[smapID]);
 
     glGenTextures(1, &g_gl.textures[smapID]);
     glActiveTexture(GL_TEXTURE0 + smapID);
     glBindTexture(GL_TEXTURE_2D, g_gl.textures[smapID]);
-    glTexStorage2D(GL_TEXTURE_2D, mipcnt, GL_RG32F, w, h);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RG, GL_FLOAT, &smap[0]);
+    glTexStorage2D(GL_TEXTURE_2D, mipcnt, GL_RGB32F, w, h);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_FLOAT, &smap[0]);
 
     glGenerateMipmap(GL_TEXTURE_2D);
     glTexParameteri(GL_TEXTURE_2D,
@@ -1277,96 +1399,26 @@ void LoadNmapTexture16(int smapID, float zf_arr[], std::vector<uint16_t> texels,
  * This Loads an R16 texture used as a displacement map
  */
 
+float minRMF = 10000.0f;
+float minFBM = 10000.0f;
+float maxRMF = 0.0f;
+float maxFBM = 0.0f;
 
-float fBm(const glm::vec2 pos, const int octaveCount, float lacunarity, float gain )
-{
-  float noiseSum     = 0.0;
-  float amplitude    = 1.0;
-  float amplitudeSum = 0.0;
-  
-  glm::vec2 sample = pos;
-  
-  for( int i = 0; i < octaveCount; ++i )
-  {
-    noiseSum     += amplitude * Simplex::noise( sample );
-    amplitudeSum += amplitude;
-    
-    amplitude *= gain;
-    sample    *= lacunarity;
-  }
-  
-  return (noiseSum / amplitudeSum);
-}
-
-
-float calcfBmNoise(glm::vec3 pos, float H)
-{    
-    float G = exp2(-H);
-    float f = wavelengthFBM;
-    float a = lacunarityFBM;
-    float t = 0.5f;
-    for( int i=0; i<octavesFBM; i++ )
-    {
-        t += a*Simplex::noise(f*pos);
-        f *= 2.0f;
-        a *= G;
-    }
-    return t;
-}
-
-
-float clamp(float n, float lower, float upper) {
-  return std::max(lower, std::min(n, upper));
-}
-
-float calcSurfaceNoise(glm::vec3 pos){
+float obterValorRuido(glm::vec3 pos){
     //Declaração das variáveis referentes aos valores de ruído do
     // ridgedMF e do fBm
-    float noiseRMF = 0.f;
     float noiseFBM = 0.f;
-    float fBm_Ampscale = pow(gainFBM, octavesRMF);
-    float fBm_UVScale  = pow(lacunarityFBM, octavesRMF);
-    //Se utilizar a função ridgedMF
-    if(noise == RIDGED || noise == RIDGEDFBM){
-        noiseRMF = Simplex::ridgedMF(wavelengthRMF*pos, ridgeOffset, octavesRMF, lacunarityRMF, gainRMF);
-/*         LOG("noiseRMF %f\n", noiseRMF);
-*/        if(getValley > 1)
-                noiseRMF = pow(noiseRMF, getValley);
-/*             LOG("noiseRMF %f\n", noiseRMF);
- */
-        if(noise == RIDGED)
-            return noiseRMF;
-        
-        noiseFBM = Simplex::fBm(wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM);
-        //noiseFBM = calcfBmNoise(pos, 0.5f);
 
-        //Obtém-se relevo de vale. O getValley pode ser atribuído no
-        //intervalo de 1 a 7. Quanto maior o valor, mais plano.
-        /* LOG("\nnoiseFBM %f\n", noiseFBM); */
-        if(getValleyFBM > 1)
-            noiseFBM = pow(noiseFBM, getValleyFBM);
-/*             LOG("noiseFBM %f\n\n", noiseFBM);
- */        
-        //Soma dos valores dos ruídos obtidos
-        return noiseFBM + (1+noiseFBM)*noiseRMF;
-    }
-    
-    //Se utilizar somente a função iqfBm
-    noiseFBM = Simplex::fBm(wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM);
-    //noiseFBM = calcfBmNoise(pos,0.5f);
-
-
-    //Obtém-se relevo de vale. O getValleyFBM pode ser atribuído
-    //no intervalo de 1 a 7. Quanto maior o valor, mais plano.
-    if(getValleyFBM > 1)
-        noiseFBM = pow(noiseFBM, getValleyFBM);
-
-    //Retorna o valor somente do ruido iqFbm
-
+    noiseFBM = glm::abs(Simplex::fBm(wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM)/(float)wavelengthFBM);
+    //LOG("noiseFBM %f\n", noiseFBM);
+    noiseFBM = pow((float)noiseFBM, (float)getValleyFBM);
+    //LOG("valley noiseFBM %f\n", noiseFBM);
+    noiseFBM = (noiseFBM)/(1.0/(float)wavelengthFBM);
     return noiseFBM;
+    
 }
 
-void update(int h, int h1, int w, float tamAmostra, float *zf_arr){
+void gerarAltura(int h, int h1, int w, float tamAmostra, float *zf_arr){
     //LOG("De %i\n", h);
      for (int j = h; j < h1; j++){
         for (int i = 0; i < w; i++) {
@@ -1375,12 +1427,15 @@ void update(int h, int h1, int w, float tamAmostra, float *zf_arr){
             //glm::vec2 pos = glm::vec2(float(i*tamAmostra), float(j*tamAmostra));
             glm::vec3 pos = glm::vec3(float(i*tamAmostra), h, float(j*tamAmostra));
 
-            float sn = calcSurfaceNoise(pos);
-            if(mountain_inverse == MONTANHA)
-                h = sn;
+            float noiseFBM = 0.f;
 
-            else if(mountain_inverse == INVERSO)
-                h = 1.f - sn;
+            noiseFBM = glm::abs(Simplex::fBm(wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM)/(float)wavelengthFBM);
+            //LOG("noiseFBM %f\n", noiseFBM);
+            noiseFBM = pow((float)noiseFBM, (float)getValleyFBM);
+            //LOG("valley noiseFBM %f\n", noiseFBM);
+            noiseFBM = (noiseFBM)/(1.0/(float)wavelengthFBM);
+            
+            h = noiseFBM;
             
             //h += calcfBmNoise(pos);
             //h *= g_terrain.dmap.scale;
@@ -1393,34 +1448,12 @@ void update(int h, int h1, int w, float tamAmostra, float *zf_arr){
     }
 }
 
-glm::vec3 surfaceNormal(int i, int j, int w, float *heightmap){
-  /*
-    Note: Surface normal is computed in this way, because the square-grid surface is meshed using triangles.
-    To avoid spatial artifacts, you need to weight properly with all neighbors.
-  */
- float scale = g_terrain.dmap.scale;
-  glm::vec3 n = glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(heightmap[i + w*j]-heightmap[i+1+w*j]), 1.0, 0.0));  //Positive X
-  n += glm::vec3(0.15) * glm::normalize(glm::vec3(scale*(heightmap[i-1+w*j]-heightmap[i+w*j]), 1.0, 0.0));  //Negative X
-  n += glm::vec3(0.15) * glm::normalize(glm::vec3(0.0, 1.0, scale*(heightmap[i+w*j]-heightmap[i+w*(j+1)])));    //Positive Y
-  n += glm::vec3(0.15) * glm::normalize(glm::vec3(0.0, 1.0, scale*(heightmap[i+w*(j-1)]-heightmap[i+w*j])));  //Negative Y
-
-  //Diagonals! (This removes the last spatial artifacts)
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i+w*j]-heightmap[i+1+w*(j+1)])/sqrt(2), sqrt(2), scale*(heightmap[i+w*j]-heightmap[i+1+w*(j+1)])/sqrt(2)));    //Positive Y
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i+w*j]-heightmap[i+1+w*(j-1)])/sqrt(2), sqrt(2), scale*(heightmap[i+w*j]-heightmap[i+1+w*(j-1)])/sqrt(2)));    //Positive Y
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i+w*j]-heightmap[i-1+w*(j+1)])/sqrt(2), sqrt(2), scale*(heightmap[i+w*j]-heightmap[i-1+w*(j+1)])/sqrt(2)));    //Positive Y
-  n += glm::vec3(0.1) * glm::normalize(glm::vec3(scale*(heightmap[i+w*j]-heightmap[i-1+w*(j-1)])/sqrt(2), sqrt(2), scale*(heightmap[i+w*j]-heightmap[i-1+w*(j-1)])/sqrt(2)));    //Positive Y
-
-  return n;
-}
-
-bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
+bool gerarTextura(int dmapID, int smapID)
 {
     double lastTime = glfwGetTime();
     double deltaTime = 0;
     djg_texture *djgt = djgt_create(1);
 
-    //LOG("Loading {Dmap-Texture}\n");
-    djgt_push_image_u16(djgt, pathToFile, 1);
 
     // Variaveis inseridas para o projeto
     float max = -1000000000000000000000000000000000000000000000000000000.f;
@@ -1431,7 +1464,7 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     int h = g_terrain.dmap.height/10; */
     int size = pow(2,12);
     int w = size;
-    int part = size / 8;
+    int part = size / 12;
     int h = w;
 
     int mipcnt = djgt__mipcnt(w, h, 1);
@@ -1442,7 +1475,7 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     std::vector<float> normals(w*h*2);
     float *zf_arr = new float [w*h];
     
-    float tamAmostra = 0.0005;//1 / (float)(pow(2,scaleTER));
+    float tamAmostra = 0.0001*(float)scaleTER;
     //LOG("Loading --------------tamAmostra%f\n", tamAmostra);
     std::vector<glm::vec3> positions(w*h);
     Simplex::seed(seeds);
@@ -1456,37 +1489,24 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     int sz5 = part*5;
     int sz6 = part*6;
     int sz7 = part*7;
+    int sz8 = part*8;
+    int sz9 = part*9;
+    int sz10 = part*10;
+    int sz11 = part*11;
 
-    /*  
-    int sz10 = part*0;     
-    int sz11 = part*1;
-    int sz12 = part*2;
-    int sz13 = part*3;
-    int sz14 = part*4;     
-    int sz15 = part*5;
-    int sz16 = part*6;
-    int sz17 = part*7;
-    */
+    std::thread th1(gerarAltura, sz0, sz1, w, tamAmostra, zf_arr);
+    std::thread th2(gerarAltura, sz1, sz2, w, tamAmostra, zf_arr);
+    std::thread th3(gerarAltura, sz2, sz3, w, tamAmostra, zf_arr);
+    std::thread th4(gerarAltura, sz3, sz4, w, tamAmostra, zf_arr);
+    std::thread th5(gerarAltura, sz4, sz5, w, tamAmostra, zf_arr);
+    std::thread th6(gerarAltura, sz5, sz6, w, tamAmostra, zf_arr);
+    std::thread th7(gerarAltura, sz6, sz7, w, tamAmostra, zf_arr);
+    std::thread th8(gerarAltura, sz7, sz8, w, tamAmostra, zf_arr);
+    std::thread th9(gerarAltura, sz8, sz9, w, tamAmostra, zf_arr);
+    std::thread th10(gerarAltura, sz9, sz10, w, tamAmostra, zf_arr);
+    std::thread th11(gerarAltura, sz10, sz11, w, tamAmostra, zf_arr);
+    std::thread th12(gerarAltura, sz11, w, w, tamAmostra, zf_arr);
 
-    std::thread th1(update, sz0, sz1, w, tamAmostra, zf_arr);
-    std::thread th2(update, sz1, sz2, w, tamAmostra, zf_arr);
-    std::thread th3(update, sz2, sz3, w, tamAmostra, zf_arr);
-    std::thread th4(update, sz3, sz4, w, tamAmostra, zf_arr);
-    std::thread th5(update, sz4, sz5, w, tamAmostra, zf_arr);
-    std::thread th6(update, sz5, sz6, w, tamAmostra, zf_arr);
-    std::thread th7(update, sz6, sz7, w, tamAmostra, zf_arr);
-    std::thread th8(update, sz7, w, w, tamAmostra, zf_arr);
-
-    /*
-    std::thread th11(update, sz10, sz11, w, tamAmostra, zf_arr);
-    std::thread th12(update, sz11, sz12, w, tamAmostra, zf_arr);
-    std::thread th13(update, sz12, sz13, w, tamAmostra, zf_arr);
-    std::thread th14(update, sz13, sz14, w, tamAmostra, zf_arr);
-    std::thread th15(update, sz14, sz15, w, tamAmostra, zf_arr);
-    std::thread th16(update, sz15, sz16, w, tamAmostra, zf_arr);
-    std::thread th17(update, sz16, sz17, w, tamAmostra, zf_arr);
-    std::thread th18(update, sz17, w, w, tamAmostra, zf_arr);
-    */
     th1.join();
     th2.join();
     th3.join();
@@ -1495,16 +1515,10 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     th6.join();
     th7.join();
     th8.join();
-    /*  
+    th9.join();
+    th10.join();
     th11.join();
     th12.join();
-    th13.join();
-    th14.join();
-    th15.join();
-    th16.join();
-    th17.join();
-    th18.join();
-    */
   
     for (int j = 0; j < h; ++j){
         for (int i = 0; i < w; ++i) {
@@ -1543,7 +1557,7 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     double nowNormal = glfwGetTime();
 
     // Load nmap from dmap
-    LoadNmapTexture16(smapID, zf_arr, texels2, w,h);
+    gerarNormal(smapID, zf_arr, texels2, w,h);
     
 
     glActiveTexture(GL_TEXTURE0 + dmapID);
@@ -1575,7 +1589,6 @@ bool LoadDmapTexture16(int dmapID, int smapID, const char *pathToFile)
     std::cout << "Tempo de execução com a normal e textura: " << deltaTime1 + deltaTime2 << " segundos" << std::endl;
 
     djgt_release(djgt);
-
     return (glGetError() == GL_NO_ERROR);
 }
 
@@ -1585,9 +1598,8 @@ bool LoadDmapTexture()
 
     //LOG("%s", g_terrain.dmap.pathToFile.c_str());
     if (!g_terrain.dmap.pathToFile.empty()) {
-        return LoadDmapTexture16(TEXTURE_DMAP,
-                                 TEXTURE_SMAP,
-                                 g_terrain.dmap.pathToFile.c_str());
+        return gerarTextura(TEXTURE_DMAP,
+                                 TEXTURE_SMAP);
     }
 
     return (glGetError() == GL_NO_ERROR);
@@ -2839,7 +2851,7 @@ void renderViewer()
                 if (g_camera.zNear >= g_camera.zFar)
                     g_camera.zNear = g_camera.zFar - 0.01f;
             }
-            if (ImGui::SliderFloat("zFar", &g_camera.zFar, 16.f, 32000.f)) {
+            if (ImGui::SliderFloat("zFar", &g_camera.zFar, 16.f, 128000.f)) {
                 if (g_camera.zFar <= g_camera.zNear)
                     g_camera.zFar = g_camera.zNear + 0.01f;
             }
@@ -2849,7 +2861,7 @@ void renderViewer()
 
         // Performance Widget
         ImGui::SetNextWindowPos(ImVec2(g_framebuffer.w - 310, 10), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(300, 460), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_FirstUseEver);
         ImGui::Begin("Performance Analysis");
         {
             double cpuDt, gpuDt;
@@ -3024,9 +3036,9 @@ void renderViewer()
         ImGui::End();
 
 
-        ImGui::SetNextWindowPos(ImVec2(10, 190), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(250, 135), ImGuiCond_FirstUseEver);
-        ImGui::Begin("Terrain Settings");
+        ImGui::SetNextWindowPos(ImVec2(10, 185), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(250, 215), ImGuiCond_FirstUseEver);
+        ImGui::Begin("Terrain fBm Settings");
         {
             const char* eTerrain[] = {
                 "Mountains",
@@ -3038,159 +3050,184 @@ void renderViewer()
                     "RIDGEDFBM",
             };
 
-            if (ImGui::SliderInt("Seed", &seeds, 0, 100)) {
+            if (ImGui::SliderInt("Seed", &seeds, 0, 100)) 
                 LOG("Seed = %i\n", seeds);
-            }
-            if (ImGui::Combo("Terrain", &mountain_inverse, &eTerrain[0], BUFFER_SIZE(eTerrain))) {
-                LOG("Montanha e Inverso = %i\n", mountain_inverse);
-            }
-            if (ImGui::Combo("Surface Noise", &noise, &eSurfaceNoise[0], BUFFER_SIZE(eSurfaceNoise))) {
+            if (ImGui::Combo("Surface Noise", &noise, &eSurfaceNoise[0], BUFFER_SIZE(eSurfaceNoise)))
                 LOG("Surface Noise = %i\n", noise);
-            }
-            if (ImGui::SliderInt("Scale", &scaleTER, 0, 15)) {
+
+            if (ImGui::SliderInt("Scale", &scaleTER, 0, 15))
                 LOG("Amostra = %i\n", scaleTER);
-            }
-        }
+            
+            if (ImGui::SliderFloat("Valley", &getValleyFBM, 0.0f, 8.0f, "%0.01f"))
+                LOG("void Int = %f\n", getValleyFBM);  
+            if (ImGui::SliderInt("Octaves", &octavesFBM, 0, 32))
+                LOG("Octaves = %f\n", octavesFBM);
 
-        ImGui::End();
-
-        ImGui::SetNextWindowPos(ImVec2(270, 250), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(380, 170), ImGuiCond_FirstUseEver);
-
-        ImGui::Begin("Ridged Setting");
-        {
-            if (ImGui::SliderFloat("Ridge size", &ridgeOffset, 0.f, 2.8f, "%0.01f"))
-                LOG("Ridge Size = %f\n", ridgeOffset);
-            if (ImGui::SliderInt("Valley", &getValley, 1, 2))
-                LOG("void Int = %i\n", getValley);  
-            if (ImGui::SliderInt("Octaves", &octavesRMF, 0, 20))
-                LOG("Octaves = %f\n", octavesRMF);
-
-            if (ImGui::SliderFloat("Wavelength", &wavelengthRMF, 0.f, 10.f, "%0.01f"))
-                LOG("Wavelength = %f\n", wavelengthRMF);
-            if (ImGui::SliderFloat("Lacunarity", &lacunarityRMF, 0.f, 16.f, "%0.5f"))
-                LOG("Lacunarity = %f\n", lacunarityRMF);
-            if (ImGui::SliderFloat("Gain", &gainRMF, 0.f, 1.f, "%0.01f"))
-                LOG("Gain = %f\n", gainRMF);
+            if (ImGui::SliderFloat("Wavelength", &wavelengthFBM, 0.f, 10.f, "%0.01f"))
+                LOG("Wavelength = %f\n", wavelengthFBM);
+            if (ImGui::SliderFloat("Lacunarity", &lacunarityFBM, 0.f, 16.f, "%0.5f"))
+                LOG("Lacunarity = %f\n", lacunarityFBM);
+            if (ImGui::SliderFloat("Gain", &gainFBM, 0.f, 1.f, "%0.01f"))
+                LOG("Gain = %f\n", gainFBM);
+            if (ImGui::Checkbox("Derivative Normals", &derivative_normals))
+                LOG("Derivative Normals= %i\n", derivative_normals);
         }
         ImGui::End();
+   
 
-        ImGui::SetNextWindowPos(ImVec2(270, 430), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(380, 55), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(10, 405), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(250, 80), ImGuiCond_FirstUseEver);
         ImGui::Begin("Generate Buttons");
         {
-            if (ImGui::Button("Generate Terrain"))
+            if (ImGui::Button("Terrain A")){
+                seeds = 42;
+                mountain_inverse = MONTANHA;
+                scaleTER = 10;
+
+                getValleyFBM = 2.5f;
+                octavesFBM = 16;
+                wavelengthFBM = 0.6f;
+                lacunarityFBM = 1.84f;
+
+                gainFBM = 0.5f;
                 LoadDmapTexture();
+            }
+
             ImGui::SameLine();
+
+            if (ImGui::Button("Terrain B")){
+                seeds = 42;
+                mountain_inverse = MONTANHA;
+                scaleTER = 10;
+
+                getValleyFBM = 4.f;
+                octavesFBM = 8;
+                wavelengthFBM = 0.1f;
+                lacunarityFBM = 1.95f;
+                gainFBM = 0.5f;
+                height3 = 5256.0f;
+                height2 = 4791.0f;
+                height1 = 3396.0f;
+                height0 = 1500.0f;
+                noiseH3 = 117.f;
+                noiseH2 = 970.f;
+                noiseH1 = 3204.f;
+                noiseH0 = 10000.f;
+
+                LoadDmapTexture();
+            }
+            ImGui::SameLine();
+
+            if (ImGui::Button("Terrain C")){
+                seeds = 42;
+                mountain_inverse = MONTANHA;
+                scaleTER = 10;
+
+                getValleyFBM = 5.0f;
+                octavesFBM = 4.f;
+                wavelengthFBM = 1.2f;
+                lacunarityFBM = 1.62;
+                gainFBM = 0.5f;
+                LoadDmapTexture();
+            }
 
             if (ImGui::Button("Reset")){
                 seeds = 1000;
                 mountain_inverse = MONTANHA;
-                noise = RIDGEDFBM;
                 scaleTER = 8;
 
                 octavesFBM = 14;
                 wavelengthFBM = 4.5f;
                 lacunarityFBM = 2.37030;
                 gainFBM = 0.5f;
-                getValleyFBM = 2;
+                getValleyFBM = 2.5;
 
-                ridgeOffset = 2.8f;
-                getValley = 2;
+                getValleyRMF = 2.0f;
                 octavesRMF = 10;
                 wavelengthRMF = 0.5f;
                 lacunarityRMF = 2.0f;
                 gainRMF = 0.5f;
                 LoadDmapTexture();
             }
-            
-            ImGui::SameLine();
-
-            if (ImGui::Button("Flat")){
-                seeds = 22;
-                mountain_inverse = MONTANHA;
-                scaleTER = 11;
-
-                octavesFBM = 12;
-                wavelengthFBM = 0.5f;
-                lacunarityFBM = 1.94595;
-                gainFBM = 0.5f;
-                getValleyFBM = 1;
-
-                ridgeOffset = 1.1f;
-                getValley = 1;
-                octavesRMF = 10;
-                wavelengthRMF = 0.1f;
-                lacunarityRMF = 2.16216;
-                gainRMF = 0.5f;
-                LoadDmapTexture();
-            }
 
             ImGui::SameLine();
 
-            if (ImGui::Button("Valley")){
-                seeds = 22;
-                mountain_inverse = MONTANHA;
-                scaleTER = 11;
-
-                octavesFBM = 14;
-                wavelengthFBM = 4.f;
-                lacunarityFBM = 1.8387;
-                gainFBM = 0.5f;
-                getValleyFBM = 2;
-
-                ridgeOffset = 1.1f;
-                getValley = 1;
-                octavesRMF = 10;
-                wavelengthRMF = 0.1f;
-                lacunarityRMF = 2.0f;
-                gainRMF = 0.5f;
+            if (ImGui::Button("Generate Terrain"))
                 LoadDmapTexture();
-            }
-            ImGui::SameLine();
-
-            if (ImGui::Button("Mountains")){
-                seeds = 22;
-                mountain_inverse = MONTANHA;
-                scaleTER = 11;
-
-                octavesFBM = 12;
-                wavelengthFBM = 4.5f;
-                lacunarityFBM = 2.05405f;
-                gainFBM = 0.5f;
-                getValleyFBM = 1;
-
-                ridgeOffset = 1.1f;
-                getValley = 1;
-                octavesRMF = 10.f;
-                wavelengthRMF = 2.5f;
-                lacunarityRMF = 1.93103;
-                gainRMF = 0.5f;
-                LoadDmapTexture();
-            }
         }
         ImGui::End();
 
-        ImGui::SetNextWindowPos(ImVec2(10, 335), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(250, 150), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(g_framebuffer.w - 230, 220), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(220, 200), ImGuiCond_FirstUseEver);
+        ImGui::Begin("Color Picker3");
+        ImGui::SliderFloat("Height", &height3, 1.f, 6000.f, "%1.f");
+        ImGui::SliderFloat("Noise Value", &noiseH3, 1.f, 10000.f, "ratio = %1.f");
 
-        ImGui::Begin("fBm");
+        ImGui::ColorPicker3("ColorPicker3", (float*)&color0);
         {
-            if (ImGui::SliderInt("Octaves", &octavesFBM, 0, 20))
-                LOG("OctavesFBM = %f\n", octavesFBM);
-            if (ImGui::SliderFloat("Wavelength", &wavelengthFBM, 0.f, 8.f, "%.01f"))
-                LOG("WavelengthFBM = %f\n", wavelengthFBM);
-            if (ImGui::SliderFloat("Lacunarity", &lacunarityFBM, 0.f, 16.f, "%0.5f"))
-                LOG("LacunarityFBM = %f\n", lacunarityFBM);
-            if (ImGui::SliderFloat("Gain", &gainFBM, 0.f, 1.f, "%0.01f"))
-                LOG("GainFBM = %f\n", gainFBM);            
-            if (ImGui::SliderInt("ValleyFBM", &getValleyFBM, 1, 4))
-                LOG("ValleyFBM = %i\n", getValleyFBM);  
+            color_backGround0[0] = color0[0];
+            color_backGround0[1] = color0[1];
+            color_backGround0[2] = color0[2];
+            //LOG("color0 %f\n", color_backGround0[0]);
+            //LOG("color0 %f\n", color_backGround0[1]);
+            //LOG("color0 %f\n", color_backGround0[2]);
+            ConfigureTerrainPrograms();
 
+        };
+        ImGui::End();
+
+        ImGui::SetNextWindowPos(ImVec2(g_framebuffer.w - 230, 425), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(220, 200), ImGuiCond_FirstUseEver);
+        ImGui::Begin("Color Picker2");
+        ImGui::SliderFloat("Height", &height2, 1.f, 6000.f, "%1.f");
+        ImGui::SliderFloat("Noise Value", &noiseH2, 1.f, 10000.f, "ratio = %1.f");
+
+        ImGui::ColorPicker3("ColorPicker3", (float*)&color1);
+        {
+
+            color_backGround1[0] = color1[0];
+            color_backGround1[1] = color1[1];
+            color_backGround1[2] = color1[2];
+            //LOG("color1 %f\n", color_backGround1[0]);
+            //LOG("color1 %f\n", color_backGround1[1]);
+            //LOG("color1 %f\n", color_backGround1[2]);
+            ConfigureTerrainPrograms();
         }
         ImGui::End();
 
+        ImGui::SetNextWindowPos(ImVec2(g_framebuffer.w - 230, 630), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(220, 200), ImGuiCond_FirstUseEver);
+        ImGui::Begin("Color Picker1");
+        ImGui::SliderFloat("Height", &height1, 1.f, 6000.f, "%1.f");
+        ImGui::SliderFloat("Noise Value", &noiseH1, 1.f, 10000.f, "ratio = %1.f");
 
+        ImGui::ColorPicker3("ColorPicker3", (float*)&color2);
+        {   
+            color_backGround2[0] = color2[0];
+            color_backGround2[1] = color2[1];
+            color_backGround2[2] = color2[2];
+            //LOG("color2 %f\n", color_backGround2[0]);
+            //LOG("color2 %f\n", color_backGround2[1]);
+            //LOG("color2 %f\n", color_backGround2[2]);
+            ConfigureTerrainPrograms();
+        }
+        ImGui::End();
+        ImGui::SetNextWindowPos(ImVec2(g_framebuffer.w - 230, 835), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(220, 200), ImGuiCond_FirstUseEver);
+        ImGui::Begin("Color Picker0");
+        ImGui::SliderFloat("Height", &height0, 1.f, 6000.f, "%1.f");
+        ImGui::SliderFloat("Noise Value", &noiseH0, 1.f, 10000.f, "ratio = %1.f");
+        ImGui::ColorPicker3("ColorPicker3", (float*)&color3);
+        {
+            color_backGround3[0] = color3[0];
+            color_backGround3[1] = color3[1];
+            color_backGround3[2] = color3[2];
+            //LOG("color3 %f\n", color_backGround3[0]);
+            //LOG("color3 %f\n", color_backGround3[1]);
+            //LOG("color3 %f\n", color_backGround3[2]);
+            ConfigureTerrainPrograms();
+        }
+        ImGui::End();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     }
@@ -3234,6 +3271,7 @@ void render()
 
 
     ++g_app.frame;
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3281,6 +3319,12 @@ keyboardCallback(
             case GLFW_KEY_S:
                 g_camera.pos += axis[2] * 0.4f * 5e-2 * norm(g_camera.pos);
                 break;
+            case GLFW_KEY_A:
+                g_camera.pos -= axis[0] * 0.4f * 5e-2 * norm(g_camera.pos);
+                break;
+            case GLFW_KEY_D:
+                g_camera.pos += axis[0] * 0.4f * 5e-2 * norm(g_camera.pos);
+                break;
             break;
         }
     }
@@ -3288,6 +3332,7 @@ keyboardCallback(
 
 void mouseButtonCallback(GLFWwindow*, int, int, int)
 {
+    
     ImGuiIO& io = ImGui::GetIO();
     if (io.WantCaptureMouse)
         return;

@@ -1,19 +1,19 @@
 /*
  Simplex Noise
-
+ 
  Copyright (c) 2016, Simon Geilfus, All rights reserved.
  Code adapted from Stefan Gustavson Simplex Noise Public Domain implementation
  Curl noise adapted from Robert Bridson papers
  This code also includes variation of noise sums by Iñigo Quilez
-
+ 
  Redistribution and use in source and binary forms, with or without modification, are permitted provided that
  the following conditions are met:
-
+ 
  * Redistributions of source code must retain the above copyright notice, this list of conditions and
 	the following disclaimer.
  * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and
 	the following disclaimer in the documentation and/or other materials provided with the distribution.
-
+ 
  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
  PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
@@ -71,7 +71,7 @@ inline glm::vec4 dnoise( const glm::vec3 &v );
 typedef std::array<float,5> vec5;
 //! Returns a 4D simplex noise with analytical derivatives
 inline vec5	dnoise( const glm::vec4 &v );
-
+	
 //! Returns a 2D simplex cellular/worley noise
 inline float worleyNoise( const glm::vec2 &v );
 //! Returns a 3D simplex cellular/worley noise
@@ -117,7 +117,7 @@ inline float fBm( const glm::vec2 &v, uint8_t octaves = 4, float lacunarity = 2.
 inline float fBm( const glm::vec3 &v, uint8_t octaves = 4, float lacunarity = 2.0f, float gain = 0.5f );
 //! Returns a 4D simplex noise fractal brownian motion sum
 inline float fBm( const glm::vec4 &v, uint8_t octaves = 4, float lacunarity = 2.0f, float gain = 0.5f );
-
+	
 //! Returns a 2D simplex cellular/worley noise fractal brownian motion sum
 inline float worleyfBm( const glm::vec2 &v, uint8_t octaves = 4, float lacunarity = 2.0f, float gain = 0.5f );
 //! Returns a 3D simplex cellular/worley noise fractal brownian motion sum
@@ -135,7 +135,7 @@ inline glm::vec3 dfBm( const glm::vec2 &v, uint8_t octaves = 4, float lacunarity
 inline glm::vec4 dfBm( const glm::vec3 &v, uint8_t octaves = 4, float lacunarity = 2.0f, float gain = 0.5f );
 //! Returns a 4D simplex noise fractal brownian motion sum with analytical derivatives
 inline vec5	dfBm( const glm::vec4 &v, uint8_t octaves = 4, float lacunarity = 2.0f, float gain = 0.5f );
-
+	
 //! Returns a 1D simplex ridged multi-fractal noise sum
 inline float ridgedMF( float x, float ridgeOffset = 1.0f, uint8_t octaves = 4, float lacunarity = 2.0f, float gain = 0.5f );
 //! Returns a 2D simplex ridged multi-fractal noise sum
@@ -155,9 +155,9 @@ inline float iqMatfBm( const glm::vec2 &v, uint8_t octaves = 4, const glm::mat2 
 
 //! Seeds the permutation table with new random values
 inline void seed( uint32_t s );
-
+	
 // implementation
-
+	
 #define FASTFLOOR(x) ( ((x)>0) ? ((int)x) : (((int)x)-1) )
 
 namespace details {
@@ -183,7 +183,7 @@ namespace details {
 #else
 	typedef unsigned char LutType;
 #endif
-
+	
 	static LutType perm[512] = {151,160,137,91,90,15,
 		131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
 		190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
@@ -211,7 +211,7 @@ namespace details {
 		49,192,214, 31,181,199,106,157,184, 84,204,176,115,121,50,45,127, 4,150,254,
 		138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
 	};
-
+	
 	/*
 	 * Gradient tables. These could be programmed the Ken Perlin way with
 	 * some clever bit-twiddling, but this is more clear, and not really slower.
@@ -220,7 +220,7 @@ namespace details {
 		{ -1.0f, -1.0f }, { 1.0f, 0.0f } , { -1.0f, 0.0f } , { 1.0f, 1.0f } ,
 		{ -1.0f, 1.0f } , { 0.0f, -1.0f } , { 0.0f, 1.0f } , { 1.0f, -1.0f }
 	};
-
+	
 	/*
 	 * Gradient directions for 3D.
 	 * These vectors are based on the midpoints of the 12 edges of a cube.
@@ -229,7 +229,7 @@ namespace details {
 	 * of two) work better. They are not random, they are carefully chosen
 	 * to represent a small, isotropic set of directions.
 	 */
-
+	
 	static float grad3lut[16][3] = {
 		{ 1.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 1.0f }, // 12 cube edges
 		{ -1.0f, 0.0f, 1.0f }, { 0.0f, -1.0f, 1.0f },
@@ -240,7 +240,7 @@ namespace details {
 		{ 1.0f, 0.0f, 1.0f }, { -1.0f, 0.0f, 1.0f }, // 4 repeats to make 16
 		{ 0.0f, 1.0f, -1.0f }, { 0.0f, -1.0f, -1.0f }
 	};
-
+	
 	static float grad4lut[32][4] = {
 		{ 0.0f, 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f, 1.0f, -1.0f }, { 0.0f, 1.0f, -1.0f, 1.0f }, { 0.0f, 1.0f, -1.0f, -1.0f }, // 32 tesseract edges
 		{ 0.0f, -1.0f, 1.0f, 1.0f }, { 0.0f, -1.0f, 1.0f, -1.0f }, { 0.0f, -1.0f, -1.0f, 1.0f }, { 0.0f, -1.0f, -1.0f, -1.0f },
@@ -251,7 +251,7 @@ namespace details {
 		{ 1.0f, 1.0f, 1.0f, 0.0f }, { 1.0f, 1.0f, -1.0f, 0.0f }, { 1.0f, -1.0f, 1.0f, 0.0f }, { 1.0f, -1.0f, -1.0f, 0.0f },
 		{ -1.0f, 1.0f, 1.0f, 0.0f }, { -1.0f, 1.0f, -1.0f, 0.0f }, { -1.0f, -1.0f, 1.0f, 0.0f }, { -1.0f, -1.0f, -1.0f, 0.0f }
 	};
-
+	
 	/*
 	 * For 3D, we define two orthogonal vectors in the desired rotation plane.
 	 * These vectors are based on the midpoints of the 12 edges of a cube,
@@ -261,10 +261,10 @@ namespace details {
 	 * They are not random, they are carefully chosen to represent a small
 	 * isotropic set of directions for any rotation angle.
 	 */
-
+	
 	/* a = sqrt(2)/sqrt(3) = 0.816496580 */
 #define a 0.81649658f
-
+	
 	static float grad3u[16][3] = {
   { 1.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 1.0f }, // 12 cube edges
   { -1.0f, 0.0f, 1.0f }, { 0.0f, -1.0f, 1.0f },
@@ -275,7 +275,7 @@ namespace details {
   { -a, a, a }, { a, -a, a },
   { a, -a, -a }, { -a, a, -a }
 	};
-
+	
 	static float grad3v[16][3] = {
   { -a, a, a }, { -a, -a, a },
   { a, -a, a }, { a, a, a },
@@ -286,12 +286,12 @@ namespace details {
   { 1.0f, 0.0f, 1.0f }, { -1.0f, 0.0f, 1.0f }, // 4 repeats to make 16
   { 0.0f, 1.0f, -1.0f }, { 0.0f, -1.0f, -1.0f }
 	};
-
+	
 #undef a
-
-
+	
+	
 	//---------------------------------------------------------------------
-
+	
 	/*
 	 * Helper functions to compute gradients-dot-residualvectors (1D to 4D)
 	 * Note that these generate gradients of more than unit length. To make
@@ -304,28 +304,28 @@ namespace details {
 	 * the noise values need to be scaled and offset to [0,1], like this:
 	 * float SLnoise = (SimplexNoise1234::noise(x,y,z) + 1.0) * 0.5;
 	 */
-
+	
 	inline float  grad( int hash, float x ) {
 		int h = hash & 15;
 		float grad = 1.0f + (h & 7);   // Gradient value 1.0, 2.0, ..., 8.0
 		if (h&8) grad = -grad;         // Set a random sign for the gradient
 		return ( grad * x );           // Multiply the gradient with the distance
 	}
-
+	
 	inline float  grad( int hash, float x, float y ) {
 		int h = hash & 7;      // Convert low 3 bits of hash code
 		float u = h<4 ? x : y;  // into 8 simple gradient directions,
 		float v = h<4 ? y : x;  // and compute the dot product with (x,y).
 		return ((h&1)? -u : u) + ((h&2)? -2.0f*v : 2.0f*v);
 	}
-
+	
 	inline float  grad( int hash, float x, float y , float z ) {
 		int h = hash & 15;     // Convert low 4 bits of hash code into 12 simple
 		float u = h<8 ? x : y; // gradient directions, and compute dot product.
 		float v = h<4 ? y : h==12||h==14 ? x : z; // Fix repeats at h = 12 to 15
 		return ((h&1)? -u : u) + ((h&2)? -v : v);
 	}
-
+	
 	inline float  grad( int hash, float x, float y, float z, float t ) {
 		int h = hash & 31;      // Convert low 5 bits of hash code into 32 simple
 		float u = h<24 ? x : y; // gradient directions, and compute dot product.
@@ -333,7 +333,7 @@ namespace details {
 		float w = h<8 ? z : t;
 		return ((h&1)? -u : u) + ((h&2)? -v : v) + ((h&4)? -w : w);
 	}
-
+	
 	/*
 	 * Helper functions to compute gradients in 1D to 4D
 	 * and gradients-dot-residualvectors in 2D to 4D.
@@ -343,14 +343,14 @@ namespace details {
 		*gx = 1.0f + (h & 7);   // Gradient value is one of 1.0, 2.0, ..., 8.0
 		if (h&8) *gx = - *gx;   // Make half of the gradients negative
 	}
-
+	
 	inline void grad2( int hash, float *gx, float *gy ) {
 		int h = hash & 7;
 		*gx = grad2lut[h][0];
 		*gy = grad2lut[h][1];
 		return;
 	}
-
+	
 	inline void grad3( int hash, float *gx, float *gy, float *gz ) {
 		int h = hash & 15;
 		*gx = grad3lut[h][0];
@@ -358,7 +358,7 @@ namespace details {
 		*gz = grad3lut[h][2];
 		return;
 	}
-
+	
 	inline void grad4( int hash, float *gx, float *gy, float *gz, float *gw) {
 		int h = hash & 31;
 		*gx = grad4lut[h][0];
@@ -367,13 +367,13 @@ namespace details {
 		*gw = grad4lut[h][3];
 		return;
 	}
-
-
+	
+	
 	/*
 	 * Helper functions to compute rotated gradients and
 	 * gradients-dot-residualvectors in 2D and 3D.
 	 */
-
+	
 	inline void gradrot2( int hash, float sin_t, float cos_t, float *gx, float *gy ) {
 		int h = hash & 7;
 		float gx0 = grad2lut[h][0];
@@ -382,7 +382,7 @@ namespace details {
 		*gy = sin_t * gx0 + cos_t * gy0;
 		return;
 	}
-
+	
 	inline void gradrot3( int hash, float sin_t, float cos_t, float *gx, float *gy, float *gz ) {
 		int h = hash & 15;
 		float gux = grad3u[h][0];
@@ -396,11 +396,11 @@ namespace details {
 		*gz = cos_t * guz + sin_t * gvz;
 		return;
 	}
-
+	
 	inline float graddotp2( float gx, float gy, float x, float y ) {
 		return gx * x + gy * y;
 	}
-
+	
 	inline float graddotp3( float gx, float gy, float gz, float x, float y, float z ) {
 		return gx * x + gy * y + gz * z;
 	}
@@ -410,13 +410,13 @@ namespace details {
  * F2 = 0.5*(sqrt(3.0)-1.0)
  * G2 = (3.0-Math.sqrt(3.0))/6.0
  */
-#define F2 0.366025403
-#define G2 0.211324865
+#define F2 0.366025403f
+#define G2 0.211324865f
 /* Skewing factors for 3D simplex grid:
  * F3 = 1/3
  * G3 = 1/6 */
-#define F3 0.333333333
-#define G3 0.166666667
+#define F3 0.333333333f
+#define G3 0.166666667f
 
 // The skewing and unskewing factors are hairy again for the 4D case
 #define F4 0.309016994f // F4 = (Math.sqrt(5.0)-1.0)/4.0
@@ -424,19 +424,19 @@ namespace details {
 
 float noise(float x)
 {
-
+	
 	int i0 = FASTFLOOR(x);
 	int i1 = i0 + 1;
 	float x0 = x - i0;
 	float x1 = x0 - 1.0f;
-
+	
 	float n0, n1;
-
+	
 	float t0 = 1.0f - x0*x0;
 	//  if(t0 < 0.0f) t0 = 0.0f;
 	t0 *= t0;
 	n0 = t0 * t0 * details::grad(details::perm[i0 & 0xff], x0);
-
+	
 	float t1 = 1.0f - x1*x1;
 	//  if(t1 < 0.0f) t1 = 0.0f;
 	t1 *= t1;
@@ -445,46 +445,46 @@ float noise(float x)
 	// A factor of 0.395 would scale to fit exactly within [-1,1], but
 	// we want to match PRMan's 1D noise, so we scale it down some more.
 	return 0.25f * (n0 + n1);
-
+	
 }
 
 // 2D simplex noise
 float noise( const glm::vec2 &v )
 {
 	float n0, n1, n2; // Noise contributions from the three corners
-
+	
 	// Skew the input space to determine which simplex cell we're in
 	float s = (v.x+v.y)*F2; // Hairy factor for 2D
 	float xs = v.x + s;
 	float ys = v.y + s;
 	int i = FASTFLOOR(xs);
 	int j = FASTFLOOR(ys);
-
+	
 	float t = (float)(i+j)*G2;
 	float X0 = i-t; // Unskew the cell origin back to (x,y) space
 	float Y0 = j-t;
 	float x0 = v.x-X0; // The x,y distances from the cell origin
 	float y0 = v.y-Y0;
-
+	
 	// For the 2D case, the simplex shape is an equilateral triangle.
 	// Determine which simplex we are in.
 	int i1, j1; // Offsets for second (middle) corner of simplex in (i,j) coords
 	if(x0>y0) {i1=1; j1=0;} // lower triangle, XY order: (0,0)->(1,0)->(1,1)
 	else {i1=0; j1=1;}      // upper triangle, YX order: (0,0)->(0,1)->(1,1)
-
+	
 	// A step of (1,0) in (i,j) means a step of (1-c,-c) in (x,y), and
 	// a step of (0,1) in (i,j) means a step of (-c,1-c) in (x,y), where
 	// c = (3-sqrt(3))/6
-
+	
 	float x1 = x0 - i1 + G2; // Offsets for middle corner in (x,y) unskewed coords
 	float y1 = y0 - j1 + G2;
 	float x2 = x0 - 1.0f + 2.0f * G2; // Offsets for last corner in (x,y) unskewed coords
 	float y2 = y0 - 1.0f + 2.0f * G2;
-
+	
 	// Wrap the integer indices at 256, to avoid indexing details::perm[] out of bounds
 	int ii = i & 0xff;
 	int jj = j & 0xff;
-
+	
 	// Calculate the contribution from the three corners
 	float t0 = 0.5f - x0*x0-y0*y0;
 	if(t0 < 0.0f) n0 = 0.0f;
@@ -492,21 +492,21 @@ float noise( const glm::vec2 &v )
 		t0 *= t0;
 		n0 = t0 * t0 * details::grad(details::perm[ii+details::perm[jj]], x0, y0);
 	}
-
+	
 	float t1 = 0.5f - x1*x1-y1*y1;
 	if(t1 < 0.0f) n1 = 0.0f;
 	else {
 		t1 *= t1;
 		n1 = t1 * t1 * details::grad(details::perm[ii+i1+details::perm[jj+j1]], x1, y1);
 	}
-
+	
 	float t2 = 0.5f - x2*x2-y2*y2;
 	if(t2 < 0.0f) n2 = 0.0f;
 	else {
 		t2 *= t2;
 		n2 = t2 * t2 * details::grad(details::perm[ii+1+details::perm[jj+1]], x2, y2);
 	}
-
+	
 	// Add contributions from each corner to get the final noise value.
 	// The result is scaled to return values in the interval [-1,1].
 	return 40.0f * (n0 + n1 + n2); // TODO: The scale factor is preliminary!
@@ -516,7 +516,7 @@ float noise( const glm::vec2 &v )
 float noise( const glm::vec3 &v )
 {
 	float n0, n1, n2, n3; // Noise contributions from the four corners
-
+	
 	// Skew the input space to determine which simplex cell we're in
 	float s = (v.x+v.y+v.z)*F3; // Very nice and simple skew factor for 3D
 	float xs = v.x+s;
@@ -525,7 +525,7 @@ float noise( const glm::vec3 &v )
 	int i = FASTFLOOR(xs);
 	int j = FASTFLOOR(ys);
 	int k = FASTFLOOR(zs);
-
+	
 	float t = (float)(i+j+k)*G3;
 	float X0 = i-t; // Unskew the cell origin back to (x,y,z) space
 	float Y0 = j-t;
@@ -533,12 +533,12 @@ float noise( const glm::vec3 &v )
 	float x0 = v.x-X0; // The x,y,z distances from the cell origin
 	float y0 = v.y-Y0;
 	float z0 = v.z-Z0;
-
+	
 	// For the 3D case, the simplex shape is a slightly irregular tetrahedron.
 	// Determine which simplex we are in.
 	int i1, j1, k1; // Offsets for second corner of simplex in (i,j,k) coords
 	int i2, j2, k2; // Offsets for third corner of simplex in (i,j,k) coords
-
+	
 	/* This code would benefit from a backport from the GLSL version! */
 	if(x0>=y0) {
 		if(y0>=z0)
@@ -551,12 +551,12 @@ float noise( const glm::vec3 &v )
 		else if(x0<z0) { i1=0; j1=1; k1=0; i2=0; j2=1; k2=1; } // Y Z X order
 		else { i1=0; j1=1; k1=0; i2=1; j2=1; k2=0; } // Y X Z order
 	}
-
+	
 	// A step of (1,0,0) in (i,j,k) means a step of (1-c,-c,-c) in (x,y,z),
 	// a step of (0,1,0) in (i,j,k) means a step of (-c,1-c,-c) in (x,y,z), and
 	// a step of (0,0,1) in (i,j,k) means a step of (-c,-c,1-c) in (x,y,z), where
 	// c = 1/6.
-
+	
 	float x1 = x0 - i1 + G3; // Offsets for second corner in (x,y,z) coords
 	float y1 = y0 - j1 + G3;
 	float z1 = z0 - k1 + G3;
@@ -566,12 +566,12 @@ float noise( const glm::vec3 &v )
 	float x3 = x0 - 1.0f + 3.0f*G3; // Offsets for last corner in (x,y,z) coords
 	float y3 = y0 - 1.0f + 3.0f*G3;
 	float z3 = z0 - 1.0f + 3.0f*G3;
-
+	
 	// Wrap the integer indices at 256, to avoid indexing details::perm[] out of bounds
 	int ii = i & 0xff;
 	int jj = j & 0xff;
 	int kk = k & 0xff;
-
+	
 	// Calculate the contribution from the four corners
 	float t0 = 0.6f - x0*x0 - y0*y0 - z0*z0;
 	if(t0 < 0.0f) n0 = 0.0f;
@@ -579,28 +579,28 @@ float noise( const glm::vec3 &v )
 		t0 *= t0;
 		n0 = t0 * t0 * details::grad(details::perm[ii+details::perm[jj+details::perm[kk]]], x0, y0, z0);
 	}
-
+	
 	float t1 = 0.6f - x1*x1 - y1*y1 - z1*z1;
 	if(t1 < 0.0f) n1 = 0.0f;
 	else {
 		t1 *= t1;
 		n1 = t1 * t1 * details::grad(details::perm[ii+i1+details::perm[jj+j1+details::perm[kk+k1]]], x1, y1, z1);
 	}
-
+	
 	float t2 = 0.6f - x2*x2 - y2*y2 - z2*z2;
 	if(t2 < 0.0f) n2 = 0.0f;
 	else {
 		t2 *= t2;
 		n2 = t2 * t2 * details::grad(details::perm[ii+i2+details::perm[jj+j2+details::perm[kk+k2]]], x2, y2, z2);
 	}
-
+	
 	float t3 = 0.6f - x3*x3 - y3*y3 - z3*z3;
 	if(t3<0.0f) n3 = 0.0f;
 	else {
 		t3 *= t3;
 		n3 = t3 * t3 * details::grad(details::perm[ii+1+details::perm[jj+1+details::perm[kk+1]]], x3, y3, z3);
 	}
-
+	
 	// Add contributions from each corner to get the final noise value.
 	// The result is scaled to stay just inside [-1,1]
 	return 32.0f * (n0 + n1 + n2 + n3); // TODO: The scale factor is preliminary!
@@ -623,7 +623,7 @@ namespace details {
 float noise( const glm::vec4 &v )
 {
 	float n0, n1, n2, n3, n4; // Noise contributions from the five corners
-
+	
 	// Skew the (x,y,z,w) space to determine which cell of 24 simplices we're in
 	float s = ( v.x + v.y + v.z + v.w ) * F4; // Factor for 4D skewing
 	float xs = v.x + s;
@@ -634,18 +634,18 @@ float noise( const glm::vec4 &v )
 	int j = FASTFLOOR(ys);
 	int k = FASTFLOOR(zs);
 	int l = FASTFLOOR(ws);
-
+	
 	float t = (i + j + k + l) * G4; // Factor for 4D unskewing
 	float X0 = i - t; // Unskew the cell origin back to (x,y,z,w) space
 	float Y0 = j - t;
 	float Z0 = k - t;
 	float W0 = l - t;
-
+	
 	float x0 = v.x - X0;  // The x,y,z,w distances from the cell origin
 	float y0 = v.y - Y0;
 	float z0 = v.z - Z0;
 	float w0 = v.w - W0;
-
+	
 	// For the 4D case, the simplex is a 4D shape I won't even try to describe.
 	// To find out which of the 24 possible simplices we're in, we need to
 	// determine the magnitude ordering of x0, y0, z0 and w0.
@@ -661,11 +661,11 @@ float noise( const glm::vec4 &v )
 	int c5 = (y0 > w0) ? 2 : 0;
 	int c6 = (z0 > w0) ? 1 : 0;
 	int c = c1 + c2 + c3 + c4 + c5 + c6;
-
+	
 	int i1, j1, k1, l1; // The integer offsets for the second simplex corner
 	int i2, j2, k2, l2; // The integer offsets for the third simplex corner
 	int i3, j3, k3, l3; // The integer offsets for the fourth simplex corner
-
+	
 	// details::sSimplexLut[c] is a 4-vector with the numbers 0, 1, 2 and 3 in some order.
 	// Many values of c will never occur, since e.g. x>y>z>w makes x<z, y<w and x<w
 	// impossible. Only the 24 indices which have non-zero entries make any sense.
@@ -686,7 +686,7 @@ float noise( const glm::vec4 &v )
 	k3 = details::sSimplexLut[c][2]>=1 ? 1 : 0;
 	l3 = details::sSimplexLut[c][3]>=1 ? 1 : 0;
 	// The fifth corner has all coordinate offsets = 1, so no need to look that up.
-
+	
 	float x1 = x0 - i1 + G4; // Offsets for second corner in (x,y,z,w) coords
 	float y1 = y0 - j1 + G4;
 	float z1 = z0 - k1 + G4;
@@ -703,13 +703,13 @@ float noise( const glm::vec4 &v )
 	float y4 = y0 - 1.0f + 4.0f*G4;
 	float z4 = z0 - 1.0f + 4.0f*G4;
 	float w4 = w0 - 1.0f + 4.0f*G4;
-
+	
 	// Wrap the integer indices at 256, to avoid indexing details::perm[] out of bounds
 	int ii = i & 0xff;
 	int jj = j & 0xff;
 	int kk = k & 0xff;
 	int ll = l & 0xff;
-
+	
 	// Calculate the contribution from the five corners
 	float t0 = 0.6f - x0*x0 - y0*y0 - z0*z0 - w0*w0;
 	if(t0 < 0.0f) n0 = 0.0f;
@@ -717,35 +717,35 @@ float noise( const glm::vec4 &v )
 		t0 *= t0;
 		n0 = t0 * t0 * details::grad(details::perm[ii+details::perm[jj+details::perm[kk+details::perm[ll]]]], x0, y0, z0, w0);
 	}
-
+	
 	float t1 = 0.6f - x1*x1 - y1*y1 - z1*z1 - w1*w1;
 	if(t1 < 0.0f) n1 = 0.0f;
 	else {
 		t1 *= t1;
 		n1 = t1 * t1 * details::grad(details::perm[ii+i1+details::perm[jj+j1+details::perm[kk+k1+details::perm[ll+l1]]]], x1, y1, z1, w1);
 	}
-
+	
 	float t2 = 0.6f - x2*x2 - y2*y2 - z2*z2 - w2*w2;
 	if(t2 < 0.0f) n2 = 0.0f;
 	else {
 		t2 *= t2;
 		n2 = t2 * t2 * details::grad(details::perm[ii+i2+details::perm[jj+j2+details::perm[kk+k2+details::perm[ll+l2]]]], x2, y2, z2, w2);
 	}
-
+	
 	float t3 = 0.6f - x3*x3 - y3*y3 - z3*z3 - w3*w3;
 	if(t3 < 0.0f) n3 = 0.0f;
 	else {
 		t3 *= t3;
 		n3 = t3 * t3 * details::grad(details::perm[ii+i3+details::perm[jj+j3+details::perm[kk+k3+details::perm[ll+l3]]]], x3, y3, z3, w3);
 	}
-
+	
 	float t4 = 0.6f - x4*x4 - y4*y4 - z4*z4 - w4*w4;
 	if(t4 < 0.0f) n4 = 0.0f;
 	else {
 		t4 *= t4;
 		n4 = t4 * t4 * details::grad(details::perm[ii+1+details::perm[jj+1+details::perm[kk+1+details::perm[ll+1]]]], x4, y4, z4, w4);
 	}
-
+	
 	// Sum up and scale the result to cover the range [-1,1]
 	return 27.0f * (n0 + n1 + n2 + n3 + n4); // TODO: The scale factor is preliminary!
 }
@@ -756,11 +756,11 @@ glm::vec2 dnoise( float x )
 	int i1 = i0 + 1;
 	float x0 = x - i0;
 	float x1 = x0 - 1.0f;
-
+	
 	float gx0, gx1;
 	float n0, n1;
 	float t20, t40, t21, t41;
-
+	
 	float x20 = x0*x0;
 	float t0 = 1.0f - x20;
 	//  if(t0 < 0.0f) t0 = 0.0f; // Never happens for 1D: x0<=1 always
@@ -768,7 +768,7 @@ glm::vec2 dnoise( float x )
 	t40 = t20 * t20;
 	details::grad1(details::perm[i0 & 0xff], &gx0);
 	n0 = t40 * gx0 * x0;
-
+	
 	float x21 = x1*x1;
 	float t1 = 1.0f - x21;
 	//  if(t1 < 0.0f) t1 = 0.0f; // Never happens for 1D: |x1|<=1 always
@@ -776,7 +776,7 @@ glm::vec2 dnoise( float x )
 	t41 = t21 * t21;
 	details::grad1(details::perm[i1 & 0xff], &gx1);
 	n1 = t41 * gx1 * x1;
-
+	
 	/* Compute derivative according to:
 	 *  *dnoise_dx = -8.0f * t20 * t0 * x0 * (gx0 * x0) + t40 * gx0;
 	 *  *dnoise_dx += -8.0f * t21 * t1 * x1 * (gx1 * x1) + t41 * gx1;
@@ -786,7 +786,7 @@ glm::vec2 dnoise( float x )
 	dnoise_dx *= -8.0f;
 	dnoise_dx += t40 * gx0 + t41 * gx1;
 	dnoise_dx *= 0.25f; /* Scale derivative to match the noise scaling */
-
+	
 	// The maximum value of this noise is 8*(3/4)^4 = 2.53125
 	// A factor of 0.395 would scale to fit exactly within [-1,1], but
 	// to better match classic Perlin noise, we scale it down some more.
@@ -800,39 +800,39 @@ glm::vec2 dnoise( float x )
 glm::vec3 dnoise( const glm::vec2 &v )
 {
 	float n0, n1, n2; // Noise contributions from the three corners
-
+	
 	// Skew the input space to determine which simplex cell we're in
 	float s = (v.x+v.y)*F2; // Hairy factor for 2D
 	float xs = v.x + s;
 	float ys = v.y + s;
 	int i = FASTFLOOR(xs);
 	int j = FASTFLOOR(ys);
-
+	
 	float t = (float)(i+j)*G2;
 	float X0 = i-t; // Unskew the cell origin back to (x,y) space
 	float Y0 = j-t;
 	float x0 = v.x-X0; // The x,y distances from the cell origin
 	float y0 = v.y-Y0;
-
+	
 	// For the 2D case, the simplex shape is an equilateral triangle.
 	// Determine which simplex we are in.
 	int i1, j1; // Offsets for second (middle) corner of simplex in (i,j) coords
 	if(x0>y0) {i1=1; j1=0;} // lower triangle, XY order: (0,0)->(1,0)->(1,1)
 	else {i1=0; j1=1;}      // upper triangle, YX order: (0,0)->(0,1)->(1,1)
-
+	
 	// A step of (1,0) in (i,j) means a step of (1-c,-c) in (x,y), and
 	// a step of (0,1) in (i,j) means a step of (-c,1-c) in (x,y), where
 	// c = (3-sqrt(3))/6
-
+	
 	float x1 = x0 - i1 + G2; // Offsets for middle corner in (x,y) unskewed coords
 	float y1 = y0 - j1 + G2;
 	float x2 = x0 - 1.0f + 2.0f * G2; // Offsets for last corner in (x,y) unskewed coords
 	float y2 = y0 - 1.0f + 2.0f * G2;
-
+	
 	// Wrap the integer indices at 256, to avoid indexing details::perm[] out of bounds
 	int ii = i & 0xff;
 	int jj = j & 0xff;
-
+	
 	float gx0, gy0, gx1, gy1, gx2, gy2; /* Gradients at simplex corners */
 
 /* Calculate the contribution from the three corners */
@@ -845,7 +845,7 @@ glm::vec3 dnoise( const glm::vec2 &v )
 		t40 = t20 * t20;
 		n0 = t40 * ( gx0 * x0 + gy0 * y0 );
 	}
-
+	
 	float t1 = 0.5f - x1 * x1 - y1 * y1;
 	float t21, t41;
 	if( t1 < 0.0f ) t21 = t41 = t1 = n1 = gx1 = gy1 = 0.0f; /* No influence */
@@ -855,7 +855,7 @@ glm::vec3 dnoise( const glm::vec2 &v )
 		t41 = t21 * t21;
 		n1 = t41 * ( gx1 * x1 + gy1 * y1 );
 	}
-
+	
 	float t2 = 0.5f - x2 * x2 - y2 * y2;
 	float t22, t42;
 	if( t2 < 0.0f ) t42 = t22 = t2 = n2 = gx2 = gy2 = 0.0f; /* No influence */
@@ -865,7 +865,7 @@ glm::vec3 dnoise( const glm::vec2 &v )
 		t42 = t22 * t22;
 		n2 = t42 * ( gx2 * x2 + gy2 * y2 );
 	}
-
+	
 	/* Compute derivative, if requested by supplying non-null pointers
 	 * for the last two arguments */
 	/*  A straight, unoptimised calculation would be like:
@@ -891,7 +891,7 @@ glm::vec3 dnoise( const glm::vec2 &v )
 	dnoise_dy += t40 * gy0 + t41 * gy1 + t42 * gy2;
 	dnoise_dx *= 40.0f; /* Scale derivative to match the noise scaling */
 	dnoise_dy *= 40.0f;
-
+	
 	// Add contributions from each corner to get the final noise value.
 	// The result is scaled to return values in the interval [-1,1].
 #ifdef SIMPLEX_DERIVATIVES_RESCALE
@@ -908,7 +908,7 @@ glm::vec4 dnoise( const glm::vec3 &v )
 	float noise;          /* Return value */
 	float gx0, gy0, gz0, gx1, gy1, gz1; /* Gradients at simplex corners */
 	float gx2, gy2, gz2, gx3, gy3, gz3;
-
+	
 	/* Skew the input space to determine which simplex cell we're in */
 	float s = (v.x+v.y+v.z)*F3; /* Very nice and simple skew factor for 3D */
 	float xs = v.x+s;
@@ -917,7 +917,7 @@ glm::vec4 dnoise( const glm::vec3 &v )
 	int i = FASTFLOOR(xs);
 	int j = FASTFLOOR(ys);
 	int k = FASTFLOOR(zs);
-
+	
 	float t = (float)(i+j+k)*G3;
 	float X0 = i-t; /* Unskew the cell origin back to (x,y,z) space */
 	float Y0 = j-t;
@@ -925,12 +925,12 @@ glm::vec4 dnoise( const glm::vec3 &v )
 	float x0 = v.x-X0; /* The x,y,z distances from the cell origin */
 	float y0 = v.y-Y0;
 	float z0 = v.z-Z0;
-
+	
 	/* For the 3D case, the simplex shape is a slightly irregular tetrahedron.
 	 * Determine which simplex we are in. */
 	int i1, j1, k1; /* Offsets for second corner of simplex in (i,j,k) coords */
 	int i2, j2, k2; /* Offsets for third corner of simplex in (i,j,k) coords */
-
+	
 	/* TODO: This code would benefit from a backport from the GLSL version! */
 	if(x0>=y0) {
 		if(y0>=z0)
@@ -943,12 +943,12 @@ glm::vec4 dnoise( const glm::vec3 &v )
 		else if(x0<z0) { i1=0; j1=1; k1=0; i2=0; j2=1; k2=1; } /* Y Z X order */
 		else { i1=0; j1=1; k1=0; i2=1; j2=1; k2=0; } /* Y X Z order */
 	}
-
+	
 	/* A step of (1,0,0) in (i,j,k) means a step of (1-c,-c,-c) in (x,y,z),
 	 * a step of (0,1,0) in (i,j,k) means a step of (-c,1-c,-c) in (x,y,z), and
 	 * a step of (0,0,1) in (i,j,k) means a step of (-c,-c,1-c) in (x,y,z), where
 	 * c = 1/6.   */
-
+	
 	float x1 = x0 - i1 + G3; /* Offsets for second corner in (x,y,z) coords */
 	float y1 = y0 - j1 + G3;
 	float z1 = z0 - k1 + G3;
@@ -958,12 +958,12 @@ glm::vec4 dnoise( const glm::vec3 &v )
 	float x3 = x0 - 1.0f + 3.0f * G3; /* Offsets for last corner in (x,y,z) coords */
 	float y3 = y0 - 1.0f + 3.0f * G3;
 	float z3 = z0 - 1.0f + 3.0f * G3;
-
+	
 	/* Wrap the integer indices at 256, to avoid indexing details::perm[] out of bounds */
 	int ii = i & 0xff;
 	int jj = j & 0xff;
 	int kk = k & 0xff;
-
+	
 	/* Calculate the contribution from the four corners */
 	float t0 = 0.6f - x0*x0 - y0*y0 - z0*z0;
 	float t20, t40;
@@ -974,7 +974,7 @@ glm::vec4 dnoise( const glm::vec3 &v )
 		t40 = t20 * t20;
 		n0 = t40 * ( gx0 * x0 + gy0 * y0 + gz0 * z0 );
 	}
-
+	
 	float t1 = 0.6f - x1*x1 - y1*y1 - z1*z1;
 	float t21, t41;
 	if(t1 < 0.0f) n1 = t1 = t21 = t41 = gx1 = gy1 = gz1 = 0.0f;
@@ -984,7 +984,7 @@ glm::vec4 dnoise( const glm::vec3 &v )
 		t41 = t21 * t21;
 		n1 = t41 * ( gx1 * x1 + gy1 * y1 + gz1 * z1 );
 	}
-
+	
 	float t2 = 0.6f - x2*x2 - y2*y2 - z2*z2;
 	float t22, t42;
 	if(t2 < 0.0f) n2 = t2 = t22 = t42 = gx2 = gy2 = gz2 = 0.0f;
@@ -994,7 +994,7 @@ glm::vec4 dnoise( const glm::vec3 &v )
 		t42 = t22 * t22;
 		n2 = t42 * ( gx2 * x2 + gy2 * y2 + gz2 * z2 );
 	}
-
+	
 	float t3 = 0.6f - x3*x3 - y3*y3 - z3*z3;
 	float t23, t43;
 	if(t3 < 0.0f) n3 = t3 = t23 = t43 = gx3 = gy3 = gz3 = 0.0f;
@@ -1004,7 +1004,7 @@ glm::vec4 dnoise( const glm::vec3 &v )
 		t43 = t23 * t23;
 		n3 = t43 * ( gx3 * x3 + gy3 * y3 + gz3 * z3 );
 	}
-
+	
 	/*  Add contributions from each corner to get the final noise value.
 	 * The result is scaled to return values in the range [-1,1] */
 #ifdef SIMPLEX_DERIVATIVES_RESCALE
@@ -1012,7 +1012,7 @@ glm::vec4 dnoise( const glm::vec3 &v )
 #else
 	noise = 28.0f * (n0 + n1 + n2 + n3);
 #endif
-
+	
 	/* Compute derivative, if requested by supplying non-null pointers
 	 * for the last three arguments */
 	/*  A straight, unoptimised calculation would be like:
@@ -1054,7 +1054,7 @@ glm::vec4 dnoise( const glm::vec3 &v )
 	dnoise_dx *= 28.0f; /* Scale derivative to match the noise scaling */
 	dnoise_dy *= 28.0f;
 	dnoise_dz *= 28.0f;
-
+	
 	return glm::vec4( noise, dnoise_dx, dnoise_dy, dnoise_dz );
 }
 
@@ -1066,7 +1066,7 @@ vec5 dnoise( const glm::vec4 &v )
 	float gx2, gy2, gz2, gw2, gx3, gy3, gz3, gw3, gx4, gy4, gz4, gw4;
 	float t20, t21, t22, t23, t24;
 	float t40, t41, t42, t43, t44;
-
+	
 	// Skew the (x,y,z,w) space to determine which cell of 24 simplices we're in
 	float s = (v.x + v.y + v.z + v.w) * F4; // Factor for 4D skewing
 	float xs = v.x + s;
@@ -1077,18 +1077,18 @@ vec5 dnoise( const glm::vec4 &v )
 	int j = FASTFLOOR(ys);
 	int k = FASTFLOOR(zs);
 	int l = FASTFLOOR(ws);
-
+	
 	float t = (i + j + k + l) * G4; // Factor for 4D unskewing
 	float X0 = i - t; // Unskew the cell origin back to (x,y,z,w) space
 	float Y0 = j - t;
 	float Z0 = k - t;
 	float W0 = l - t;
-
+	
 	float x0 = v.x - X0;  // The x,y,z,w distances from the cell origin
 	float y0 = v.y - Y0;
 	float z0 = v.z - Z0;
 	float w0 = v.w - W0;
-
+	
 	// For the 4D case, the simplex is a 4D shape I won't even try to describe.
 	// To find out which of the 24 possible simplices we're in, we need to
 	// determine the magnitude ordering of x0, y0, z0 and w0.
@@ -1104,11 +1104,11 @@ vec5 dnoise( const glm::vec4 &v )
 	int c5 = (y0 > w0) ? 2 : 0;
 	int c6 = (z0 > w0) ? 1 : 0;
 	int c = c1 | c2 | c3 | c4 | c5 | c6; // '|' is mostly faster than '+'
-
+	
 	int i1, j1, k1, l1; // The integer offsets for the second simplex corner
 	int i2, j2, k2, l2; // The integer offsets for the third simplex corner
 	int i3, j3, k3, l3; // The integer offsets for the fourth simplex corner
-
+	
 	// details::sSimplexLut[c] is a 4-vector with the numbers 0, 1, 2 and 3 in some order.
 	// Many values of c will never occur, since e.g. x>y>z>w makes x<z, y<w and x<w
 	// impossible. Only the 24 indices which have non-zero entries make any sense.
@@ -1129,7 +1129,7 @@ vec5 dnoise( const glm::vec4 &v )
 	k3 = details::sSimplexLut[c][2]>=1 ? 1 : 0;
 	l3 = details::sSimplexLut[c][3]>=1 ? 1 : 0;
 	// The fifth corner has all coordinate offsets = 1, so no need to look that up.
-
+	
 	float x1 = x0 - i1 + G4; // Offsets for second corner in (x,y,z,w) coords
 	float y1 = y0 - j1 + G4;
 	float z1 = z0 - k1 + G4;
@@ -1146,13 +1146,13 @@ vec5 dnoise( const glm::vec4 &v )
 	float y4 = y0 - 1.0f + 4.0f * G4;
 	float z4 = z0 - 1.0f + 4.0f * G4;
 	float w4 = w0 - 1.0f + 4.0f * G4;
-
+	
 	// Wrap the integer indices at 256, to avoid indexing details::perm[] out of bounds
 	int ii = i & 0xff;
 	int jj = j & 0xff;
 	int kk = k & 0xff;
 	int ll = l & 0xff;
-
+	
 	// Calculate the contribution from the five corners
 	float t0 = 0.6f - x0*x0 - y0*y0 - z0*z0 - w0*w0;
 	if(t0 < 0.0f) n0 = t0 = t20 = t40 = gx0 = gy0 = gz0 = gw0 = 0.0f;
@@ -1162,7 +1162,7 @@ vec5 dnoise( const glm::vec4 &v )
 		details::grad4(details::perm[ii+details::perm[jj+details::perm[kk+details::perm[ll]]]], &gx0, &gy0, &gz0, &gw0);
 		n0 = t40 * ( gx0 * x0 + gy0 * y0 + gz0 * z0 + gw0 * w0 );
 	}
-
+	
 	float t1 = 0.6f - x1*x1 - y1*y1 - z1*z1 - w1*w1;
 	if(t1 < 0.0f) n1 = t1 = t21 = t41 = gx1 = gy1 = gz1 = gw1 = 0.0f;
 	else {
@@ -1171,7 +1171,7 @@ vec5 dnoise( const glm::vec4 &v )
 		details::grad4(details::perm[ii+i1+details::perm[jj+j1+details::perm[kk+k1+details::perm[ll+l1]]]], &gx1, &gy1, &gz1, &gw1);
 		n1 = t41 * ( gx1 * x1 + gy1 * y1 + gz1 * z1 + gw1 * w1 );
 	}
-
+	
 	float t2 = 0.6f - x2*x2 - y2*y2 - z2*z2 - w2*w2;
 	if(t2 < 0.0f) n2 = t2 = t22 = t42 = gx2 = gy2 = gz2 = gw2 = 0.0f;
 	else {
@@ -1180,7 +1180,7 @@ vec5 dnoise( const glm::vec4 &v )
 		details::grad4(details::perm[ii+i2+details::perm[jj+j2+details::perm[kk+k2+details::perm[ll+l2]]]], &gx2, &gy2, &gz2, &gw2);
 		n2 = t42 * ( gx2 * x2 + gy2 * y2 + gz2 * z2 + gw2 * w2 );
 	}
-
+	
 	float t3 = 0.6f - x3*x3 - y3*y3 - z3*z3 - w3*w3;
 	if(t3 < 0.0f) n3 = t3 = t23 = t43 = gx3 = gy3 = gz3 = gw3 = 0.0f;
 	else {
@@ -1189,7 +1189,7 @@ vec5 dnoise( const glm::vec4 &v )
 		details::grad4(details::perm[ii+i3+details::perm[jj+j3+details::perm[kk+k3+details::perm[ll+l3]]]], &gx3, &gy3, &gz3, &gw3);
 		n3 = t43 * ( gx3 * x3 + gy3 * y3 + gz3 * z3 + gw3 * w3 );
 	}
-
+	
 	float t4 = 0.6f - x4*x4 - y4*y4 - z4*z4 - w4*w4;
 	if(t4 < 0.0f) n4 = t4 = t24 = t44 = gx4 = gy4 = gz4 = gw4 = 0.0f;
 	else {
@@ -1198,10 +1198,10 @@ vec5 dnoise( const glm::vec4 &v )
 		details::grad4(details::perm[ii+1+details::perm[jj+1+details::perm[kk+1+details::perm[ll+1]]]], &gx4, &gy4, &gz4, &gw4);
 		n4 = t44 * ( gx4 * x4 + gy4 * y4 + gz4 * z4 + gw4 * w4 );
 	}
-
+	
 	// Sum up and scale the result to cover the range [-1,1]
 	noise = 27.0f * (n0 + n1 + n2 + n3 + n4); // TODO: The scale factor is preliminary!
-
+	
 	/* Compute derivative, if requested by supplying non-null pointers
 	 * for the last four arguments */
 	/*  A straight, unoptimised calculation would be like:
@@ -1259,21 +1259,21 @@ vec5 dnoise( const glm::vec4 &v )
 	dnoise_dy += t40 * gy0 + t41 * gy1 + t42 * gy2 + t43 * gy3 + t44 * gy4;
 	dnoise_dz += t40 * gz0 + t41 * gz1 + t42 * gz2 + t43 * gz3 + t44 * gz4;
 	dnoise_dw += t40 * gw0 + t41 * gw1 + t42 * gw2 + t43 * gw3 + t44 * gw4;
-
+	
 	dnoise_dx *= 28.0f; /* Scale derivative to match the noise scaling */
 	dnoise_dy *= 28.0f;
 	dnoise_dz *= 28.0f;
 	dnoise_dw *= 28.0f;
-
+	
 	return { noise, dnoise_dx, dnoise_dy, dnoise_dz, dnoise_dw };
 }
-
-
+	
+	
 float worleyNoise( const glm::vec2 &v )
 {
 	glm::vec2 p = glm::floor( v );
 	glm::vec2 f = glm::fract( v );
-
+	
 	float res = 8.0;
 	for( int j=-1; j<=1; j++ ) {
 		for( int i=-1; i<=1; i++ ) {
@@ -1289,7 +1289,7 @@ float worleyNoise( const glm::vec3 &v )
 {
 	glm::vec3 p = glm::floor( v );
 	glm::vec3 f = glm::fract( v );
-
+	
 	float res = 8.0;
 	for( int k=-1; k<=1; k++ ) {
 		for( int j=-1; j<=1; j++ ) {
@@ -1307,7 +1307,7 @@ float worleyNoise( const glm::vec2 &v, float falloff )
 {
 	glm::vec2 p = glm::floor( v );
 	glm::vec2 f = glm::fract( v );
-
+	
 	float res = 0.0f;
 	for( int j=-1; j<=1; j++ ) {
 		for( int i=-1; i<=1; i++ ) {
@@ -1323,7 +1323,7 @@ float worleyNoise( const glm::vec3 &v, float falloff )
 {
 	glm::vec3 p = glm::floor( v );
 	glm::vec3 f = glm::fract( v );
-
+	
 	float res = 0.0f;
 	for( int k=-1; k<=1; k++ ) {
 		for( int j=-1; j<=1; j++ ) {
@@ -1337,7 +1337,7 @@ float worleyNoise( const glm::vec3 &v, float falloff )
 	}
 	return -( 1.0f / falloff ) * glm::log( res );
 }
-
+	
 float flowNoise( const glm::vec2 &v, float angle )
 {
 	float n0, n1, n2; /* Noise contributions from the three simplex corners */
@@ -1345,26 +1345,26 @@ float flowNoise( const glm::vec2 &v, float angle )
 	float sin_t, cos_t; /* Sine and cosine for the gradient rotation angle */
 	sin_t = sin( angle );
 	cos_t = cos( angle );
-
+	
 	/* Skew the input space to determine which simplex cell we're in */
 	float s = ( v.x + v.y ) * F2; /* Hairy factor for 2D */
 	float xs = v.x + s;
 	float ys = v.y + s;
 	int i = FASTFLOOR( xs );
 	int j = FASTFLOOR( ys );
-
+	
 	float t = ( float ) ( i + j ) * G2;
 	float X0 = i - t; /* Unskew the cell origin back to (x,y) space */
 	float Y0 = j - t;
 	float x0 = v.x - X0; /* The x,y distances from the cell origin */
 	float y0 = v.y - Y0;
-
+	
 	/* For the 2D case, the simplex shape is an equilateral triangle.
 	 * Determine which simplex we are in. */
 	int i1, j1; /* Offsets for second (middle) corner of simplex in (i,j) coords */
 	if( x0 > y0 ) { i1 = 1; j1 = 0; } /* lower triangle, XY order: (0,0)->(1,0)->(1,1) */
 	else { i1 = 0; j1 = 1; }      /* upper triangle, YX order: (0,0)->(0,1)->(1,1) */
-
+	
 	/* A step of (1,0) in (i,j) means a step of (1-c,-c) in (x,y), and
 	 * a step of (0,1) in (i,j) means a step of (-c,1-c) in (x,y), where
 	 * c = (3-sqrt(3))/6   */
@@ -1372,11 +1372,11 @@ float flowNoise( const glm::vec2 &v, float angle )
 	float y1 = y0 - j1 + G2;
 	float x2 = x0 - 1.0f + 2.0f * G2; /* Offsets for last corner in (x,y) unskewed coords */
 	float y2 = y0 - 1.0f + 2.0f * G2;
-
+	
 	/* Wrap the integer indices at 256, to avoid indexing details::perm[] out of bounds */
 	int ii = i & 0xff;
 	int jj = j & 0xff;
-
+	
 	/* Calculate the contribution from the three corners */
 	float t0 = 0.5f - x0 * x0 - y0 * y0;
 	float t20, t40;
@@ -1387,7 +1387,7 @@ float flowNoise( const glm::vec2 &v, float angle )
 		t40 = t20 * t20;
 		n0 = t40 * details::graddotp2( gx0, gy0, x0, y0 );
 	}
-
+	
 	float t1 = 0.5f - x1 * x1 - y1 * y1;
 	float t21, t41;
 	if( t1 < 0.0f ) t21 = t41 = t1 = n1 = gx1 = gy1 = 0.0f; /* No influence */
@@ -1397,7 +1397,7 @@ float flowNoise( const glm::vec2 &v, float angle )
 		t41 = t21 * t21;
 		n1 = t41 * details::graddotp2( gx1, gy1, x1, y1 );
 	}
-
+	
 	float t2 = 0.5f - x2 * x2 - y2 * y2;
 	float t22, t42;
 	if( t2 < 0.0f ) t42 = t22 = t2 = n2 = gx2 = gy2 = 0.0f; /* No influence */
@@ -1407,7 +1407,7 @@ float flowNoise( const glm::vec2 &v, float angle )
 		t42 = t22 * t22;
 		n2 = t42 * details::graddotp2( gx2, gy2, x2, y2 );
 	}
-
+	
 	/* Add contributions from each corner to get the final noise value.
 	 * The result is scaled to return values in the interval [-1,1]. */
 	return 40.0f * ( n0 + n1 + n2 );
@@ -1420,7 +1420,7 @@ float flowNoise( const glm::vec3 &v, float angle )
 	float sin_t, cos_t; /* Sine and cosine for the gradient rotation angle */
 	sin_t = sin( angle );
 	cos_t = cos( angle );
-
+	
 	/* Skew the input space to determine which simplex cell we're in */
 	float s = (v.x+v.y+v.z)*F3; /* Very nice and simple skew factor for 3D */
 	float xs = v.x+s;
@@ -1429,7 +1429,7 @@ float flowNoise( const glm::vec3 &v, float angle )
 	int i = FASTFLOOR(xs);
 	int j = FASTFLOOR(ys);
 	int k = FASTFLOOR(zs);
-
+	
 	float t = (float)(i+j+k)*G3;
 	float X0 = i-t; /* Unskew the cell origin back to (x,y,z) space */
 	float Y0 = j-t;
@@ -1437,12 +1437,12 @@ float flowNoise( const glm::vec3 &v, float angle )
 	float x0 = v.x-X0; /* The x,y,z distances from the cell origin */
 	float y0 = v.y-Y0;
 	float z0 = v.z-Z0;
-
+	
 	/* For the 3D case, the simplex shape is a slightly irregular tetrahedron.
 	 * Determine which simplex we are in. */
 	int i1, j1, k1; /* Offsets for second corner of simplex in (i,j,k) coords */
 	int i2, j2, k2; /* Offsets for third corner of simplex in (i,j,k) coords */
-
+	
 	/* TODO: This code would benefit from a backport from the GLSL version! */
 	if(x0>=y0) {
 		if(y0>=z0)
@@ -1455,12 +1455,12 @@ float flowNoise( const glm::vec3 &v, float angle )
 		else if(x0<z0) { i1=0; j1=1; k1=0; i2=0; j2=1; k2=1; } /* Y Z X order */
 		else { i1=0; j1=1; k1=0; i2=1; j2=1; k2=0; } /* Y X Z order */
 	}
-
+	
 	/* A step of (1,0,0) in (i,j,k) means a step of (1-c,-c,-c) in (x,y,z),
 	 * a step of (0,1,0) in (i,j,k) means a step of (-c,1-c,-c) in (x,y,z), and
 	 * a step of (0,0,1) in (i,j,k) means a step of (-c,-c,1-c) in (x,y,z), where
 	 * c = 1/6.   */
-
+	
 	float x1 = x0 - i1 + G3; /* Offsets for second corner in (x,y,z) coords */
 	float y1 = y0 - j1 + G3;
 	float z1 = z0 - k1 + G3;
@@ -1470,12 +1470,12 @@ float flowNoise( const glm::vec3 &v, float angle )
 	float x3 = x0 - 1.0f + 3.0f * G3; /* Offsets for last corner in (x,y,z) coords */
 	float y3 = y0 - 1.0f + 3.0f * G3;
 	float z3 = z0 - 1.0f + 3.0f * G3;
-
+	
 	/* Wrap the integer indices at 256, to avoid indexing details::perm[] out of bounds */
 	int ii = i & 0xff;
 	int jj = j & 0xff;
 	int kk = k & 0xff;
-
+	
 	/* Calculate the contribution from the four corners */
 	float t0 = 0.6f - x0*x0 - y0*y0 - z0*z0;
 	float t20, t40;
@@ -1486,7 +1486,7 @@ float flowNoise( const glm::vec3 &v, float angle )
 		t40 = t20 * t20;
 		n0 = t40 * details::graddotp3( gx0, gy0, gz0, x0, y0, z0 );
 	}
-
+	
 	float t1 = 0.6f - x1*x1 - y1*y1 - z1*z1;
 	float t21, t41;
 	if(t1 < 0.0f) n1 = t1 = t21 = t41 = gx1 = gy1 = gz1 = 0.0f;
@@ -1496,7 +1496,7 @@ float flowNoise( const glm::vec3 &v, float angle )
 		t41 = t21 * t21;
 		n1 = t41 * details::graddotp3( gx1, gy1, gz1, x1, y1, z1 );
 	}
-
+	
 	float t2 = 0.6f - x2*x2 - y2*y2 - z2*z2;
 	float t22, t42;
 	if(t2 < 0.0f) n2 = t2 = t22 = t42 = gx2 = gy2 = gz2 = 0.0f;
@@ -1506,7 +1506,7 @@ float flowNoise( const glm::vec3 &v, float angle )
 		t42 = t22 * t22;
 		n2 = t42 * details::graddotp3( gx2, gy2, gz2, x2, y2, z2 );
 	}
-
+	
 	float t3 = 0.6f - x3*x3 - y3*y3 - z3*z3;
 	float t23, t43;
 	if(t3 < 0.0f) n3 = t3 = t23 = t43 = gx3 = gy3 = gz3 = 0.0f;
@@ -1516,39 +1516,39 @@ float flowNoise( const glm::vec3 &v, float angle )
 		t43 = t23 * t23;
 		n3 = t43 * details::graddotp3( gx3, gy3, gz3, x3, y3, z3 );
 	}
-
+	
 	/*  Add contributions from each corner to get the final noise value.
 	 * The result is scaled to return values in the range [-1,1] */
 	return 28.0f * (n0 + n1 + n2 + n3);
 }
 glm::vec3 dFlowNoise( const glm::vec2 &v, float angle )
 {
-
+	
 	float n0, n1, n2; /* Noise contributions from the three simplex corners */
 	float gx0, gy0, gx1, gy1, gx2, gy2; /* Gradients at simplex corners */
 	float sin_t, cos_t; /* Sine and cosine for the gradient rotation angle */
 	sin_t = sin( angle );
 	cos_t = cos( angle );
-
+	
 	/* Skew the input space to determine which simplex cell we're in */
 	float s = ( v.x + v.y ) * F2; /* Hairy factor for 2D */
 	float xs = v.x + s;
 	float ys = v.y + s;
 	int i = FASTFLOOR( xs );
 	int j = FASTFLOOR( ys );
-
+	
 	float t = ( float ) ( i + j ) * G2;
 	float X0 = i - t; /* Unskew the cell origin back to (x,y) space */
 	float Y0 = j - t;
 	float x0 = v.x - X0; /* The x,y distances from the cell origin */
 	float y0 = v.y - Y0;
-
+	
 	/* For the 2D case, the simplex shape is an equilateral triangle.
 	 * Determine which simplex we are in. */
 	int i1, j1; /* Offsets for second (middle) corner of simplex in (i,j) coords */
 	if( x0 > y0 ) { i1 = 1; j1 = 0; } /* lower triangle, XY order: (0,0)->(1,0)->(1,1) */
 	else { i1 = 0; j1 = 1; }      /* upper triangle, YX order: (0,0)->(0,1)->(1,1) */
-
+	
 	/* A step of (1,0) in (i,j) means a step of (1-c,-c) in (x,y), and
 	 * a step of (0,1) in (i,j) means a step of (-c,1-c) in (x,y), where
 	 * c = (3-sqrt(3))/6   */
@@ -1556,11 +1556,11 @@ glm::vec3 dFlowNoise( const glm::vec2 &v, float angle )
 	float y1 = y0 - j1 + G2;
 	float x2 = x0 - 1.0f + 2.0f * G2; /* Offsets for last corner in (x,y) unskewed coords */
 	float y2 = y0 - 1.0f + 2.0f * G2;
-
+	
 	/* Wrap the integer indices at 256, to avoid indexing details::perm[] out of bounds */
 	int ii = i & 0xff;
 	int jj = j & 0xff;
-
+	
 	/* Calculate the contribution from the three corners */
 	float t0 = 0.5f - x0 * x0 - y0 * y0;
 	float t20, t40;
@@ -1571,7 +1571,7 @@ glm::vec3 dFlowNoise( const glm::vec2 &v, float angle )
 		t40 = t20 * t20;
 		n0 = t40 * details::graddotp2( gx0, gy0, x0, y0 );
 	}
-
+	
 	float t1 = 0.5f - x1 * x1 - y1 * y1;
 	float t21, t41;
 	if( t1 < 0.0f ) t21 = t41 = t1 = n1 = gx1 = gy1 = 0.0f; /* No influence */
@@ -1581,7 +1581,7 @@ glm::vec3 dFlowNoise( const glm::vec2 &v, float angle )
 		t41 = t21 * t21;
 		n1 = t41 * details::graddotp2( gx1, gy1, x1, y1 );
 	}
-
+	
 	float t2 = 0.5f - x2 * x2 - y2 * y2;
 	float t22, t42;
 	if( t2 < 0.0f ) t42 = t22 = t2 = n2 = gx2 = gy2 = 0.0f; /* No influence */
@@ -1591,15 +1591,15 @@ glm::vec3 dFlowNoise( const glm::vec2 &v, float angle )
 		t42 = t22 * t22;
 		n2 = t42 * details::graddotp2( gx2, gy2, x2, y2 );
 	}
-
+	
 	/* Add contributions from each corner to get the final noise value.
 	 * The result is scaled to return values in the interval [-1,1]. */
 	float noise = 40.0f * ( n0 + n1 + n2 );
-
+	
 	/* Compute derivative, if requested by supplying non-null pointers
 	 * for the last two arguments */
 	float dnoise_dx, dnoise_dy;
-
+	
 	/*  A straight, unoptimised calculation would be like:
 	 *    *dnoise_dx = -8.0f * t20 * t0 * x0 * details::graddotp2(gx0, gy0, x0, y0) + t40 * gx0;
 	 *    *dnoise_dy = -8.0f * t20 * t0 * y0 * details::graddotp2(gx0, gy0, x0, y0) + t40 * gy0;
@@ -1624,7 +1624,7 @@ glm::vec3 dFlowNoise( const glm::vec2 &v, float angle )
 	dnoise_dy += t40 * gy0 + t41 * gy1 + t42 * gy2;
 	dnoise_dx *= 40.0f; /* Scale derivative to match the noise scaling */
 	dnoise_dy *= 40.0f;
-
+	
 	return glm::vec3( noise, dnoise_dx, dnoise_dy );
 }
 glm::vec4 dFlowNoise( const glm::vec3 &v, float angle )
@@ -1636,7 +1636,7 @@ glm::vec4 dFlowNoise( const glm::vec3 &v, float angle )
 	float sin_t, cos_t; /* Sine and cosine for the gradient rotation angle */
 	sin_t = sin( angle );
 	cos_t = cos( angle );
-
+	
 	/* Skew the input space to determine which simplex cell we're in */
 	float s = (v.x+v.y+v.z)*F3; /* Very nice and simple skew factor for 3D */
 	float xs = v.x+s;
@@ -1645,7 +1645,7 @@ glm::vec4 dFlowNoise( const glm::vec3 &v, float angle )
 	int i = FASTFLOOR(xs);
 	int j = FASTFLOOR(ys);
 	int k = FASTFLOOR(zs);
-
+	
 	float t = (float)(i+j+k)*G3;
 	float X0 = i-t; /* Unskew the cell origin back to (x,y,z) space */
 	float Y0 = j-t;
@@ -1653,12 +1653,12 @@ glm::vec4 dFlowNoise( const glm::vec3 &v, float angle )
 	float x0 = v.x-X0; /* The x,y,z distances from the cell origin */
 	float y0 = v.y-Y0;
 	float z0 = v.z-Z0;
-
+	
 	/* For the 3D case, the simplex shape is a slightly irregular tetrahedron.
 	 * Determine which simplex we are in. */
 	int i1, j1, k1; /* Offsets for second corner of simplex in (i,j,k) coords */
 	int i2, j2, k2; /* Offsets for third corner of simplex in (i,j,k) coords */
-
+	
 	/* TODO: This code would benefit from a backport from the GLSL version! */
 	if(x0>=y0) {
 		if(y0>=z0)
@@ -1671,12 +1671,12 @@ glm::vec4 dFlowNoise( const glm::vec3 &v, float angle )
 		else if(x0<z0) { i1=0; j1=1; k1=0; i2=0; j2=1; k2=1; } /* Y Z X order */
 		else { i1=0; j1=1; k1=0; i2=1; j2=1; k2=0; } /* Y X Z order */
 	}
-
+	
 	/* A step of (1,0,0) in (i,j,k) means a step of (1-c,-c,-c) in (x,y,z),
 	 * a step of (0,1,0) in (i,j,k) means a step of (-c,1-c,-c) in (x,y,z), and
 	 * a step of (0,0,1) in (i,j,k) means a step of (-c,-c,1-c) in (x,y,z), where
 	 * c = 1/6.   */
-
+	
 	float x1 = x0 - i1 + G3; /* Offsets for second corner in (x,y,z) coords */
 	float y1 = y0 - j1 + G3;
 	float z1 = z0 - k1 + G3;
@@ -1686,12 +1686,12 @@ glm::vec4 dFlowNoise( const glm::vec3 &v, float angle )
 	float x3 = x0 - 1.0f + 3.0f * G3; /* Offsets for last corner in (x,y,z) coords */
 	float y3 = y0 - 1.0f + 3.0f * G3;
 	float z3 = z0 - 1.0f + 3.0f * G3;
-
+	
 	/* Wrap the integer indices at 256, to avoid indexing details::perm[] out of bounds */
 	int ii = i & 0xff;
 	int jj = j & 0xff;
 	int kk = k & 0xff;
-
+	
 	/* Calculate the contribution from the four corners */
 	float t0 = 0.6f - x0*x0 - y0*y0 - z0*z0;
 	float t20, t40;
@@ -1702,7 +1702,7 @@ glm::vec4 dFlowNoise( const glm::vec3 &v, float angle )
 		t40 = t20 * t20;
 		n0 = t40 * details::graddotp3( gx0, gy0, gz0, x0, y0, z0 );
 	}
-
+	
 	float t1 = 0.6f - x1*x1 - y1*y1 - z1*z1;
 	float t21, t41;
 	if(t1 < 0.0f) n1 = t1 = t21 = t41 = gx1 = gy1 = gz1 = 0.0f;
@@ -1712,7 +1712,7 @@ glm::vec4 dFlowNoise( const glm::vec3 &v, float angle )
 		t41 = t21 * t21;
 		n1 = t41 * details::graddotp3( gx1, gy1, gz1, x1, y1, z1 );
 	}
-
+	
 	float t2 = 0.6f - x2*x2 - y2*y2 - z2*z2;
 	float t22, t42;
 	if(t2 < 0.0f) n2 = t2 = t22 = t42 = gx2 = gy2 = gz2 = 0.0f;
@@ -1722,7 +1722,7 @@ glm::vec4 dFlowNoise( const glm::vec3 &v, float angle )
 		t42 = t22 * t22;
 		n2 = t42 * details::graddotp3( gx2, gy2, gz2, x2, y2, z2 );
 	}
-
+	
 	float t3 = 0.6f - x3*x3 - y3*y3 - z3*z3;
 	float t23, t43;
 	if(t3 < 0.0f) n3 = t3 = t23 = t43 = gx3 = gy3 = gz3 = 0.0f;
@@ -1732,15 +1732,15 @@ glm::vec4 dFlowNoise( const glm::vec3 &v, float angle )
 		t43 = t23 * t23;
 		n3 = t43 * details::graddotp3( gx3, gy3, gz3, x3, y3, z3 );
 	}
-
+	
 	/*  Add contributions from each corner to get the final noise value.
 	 * The result is scaled to return values in the range [-1,1] */
 	noise = 28.0f * (n0 + n1 + n2 + n3);
-
+	
 	/* Compute derivative, if requested by supplying non-null pointers
 	 * for the last three arguments */
 	float dnoise_dx, dnoise_dy, dnoise_dz;
-
+	
 	/*  A straight, unoptimised calculation would be like:
 	 *     *dnoise_dx = -8.0f * t20 * t0 * x0 * details::graddotp3(gx0, gy0, gz0, x0, y0, z0) + t40 * gx0;
 	 *    *dnoise_dy = -8.0f * t20 * t0 * y0 * details::graddotp3(gx0, gy0, gz0, x0, y0, z0) + t40 * gy0;
@@ -1781,7 +1781,7 @@ glm::vec4 dFlowNoise( const glm::vec3 &v, float angle )
 	dnoise_dx *= 28.0f; /* Scale derivative to match the noise scaling */
 	dnoise_dy *= 28.0f;
 	dnoise_dz *= 28.0f;
-
+	
 	return glm::vec4( noise, dnoise_dx, dnoise_dy, dnoise_dz );
 }
 
@@ -1849,14 +1849,14 @@ namespace details {
 		float sum   = 0.0f;
 		float freq  = 1.0f;
 		float amp   = 0.5f;
-
+		
 		for( uint8_t i = 0; i < octaves; i++ ){
 			float n     = noise( input * freq );
 			sum        += n*amp;
 			freq       *= lacunarity;
 			amp        *= gain;
 		}
-
+		
 		return sum;
 	}
 }
@@ -1877,7 +1877,7 @@ float fBm( const glm::vec4 &v, uint8_t octaves, float lacunarity, float gain )
 {
 	return details::fBm_t( v, octaves, lacunarity, gain );
 }
-
+	
 namespace details {
 	template<typename T>
 	float worleyfBm_t( const T &input, uint8_t octaves, float lacunarity, float gain )
@@ -1885,14 +1885,14 @@ namespace details {
 		float sum   = 0.0f;
 		float freq  = 1.0f;
 		float amp   = 0.5f;
-
+		
 		for( uint8_t i = 0; i < octaves; i++ ){
 			float n     = worleyNoise( input * freq );
 			sum        += n*amp;
 			freq       *= lacunarity;
 			amp        *= gain;
 		}
-
+		
 		return sum;
 	}
 	template<typename T>
@@ -1901,14 +1901,14 @@ namespace details {
 		float sum   = 0.0f;
 		float freq  = 1.0f;
 		float amp   = 0.5f;
-
+		
 		for( uint8_t i = 0; i < octaves; i++ ){
 			float n     = worleyNoise( input * freq, falloff );
 			sum        += n*amp;
 			freq       *= lacunarity;
 			amp        *= gain;
 		}
-
+		
 		return sum;
 	}
 }
@@ -1935,14 +1935,14 @@ glm::vec2 dfBm( float x, uint8_t octaves, float lacunarity, float gain )
 	glm::vec2 sum	= glm::vec2( 0.0f );
 	float freq		= 1.0f;
 	float amp		= 0.5f;
-
+	
 	for( uint8_t i = 0; i < octaves; i++ ){
 		glm::vec2 n	= dnoise( x * freq );
 		sum        += n*amp;
 		freq       *= lacunarity;
 		amp        *= gain;
 	}
-
+	
 	return sum;
 }
 glm::vec3 dfBm( const glm::vec2 &v, uint8_t octaves, float lacunarity, float gain )
@@ -1950,14 +1950,14 @@ glm::vec3 dfBm( const glm::vec2 &v, uint8_t octaves, float lacunarity, float gai
 	glm::vec3 sum	= glm::vec3( 0.0f );
 	float freq		= 1.0f;
 	float amp		= 0.5f;
-
+	
 	for( uint8_t i = 0; i < octaves; i++ ){
 		glm::vec3 n	= dnoise( v * freq );
 		sum        += n*amp;
 		freq       *= lacunarity;
 		amp        *= gain;
 	}
-
+	
 	return sum;
 }
 glm::vec4 dfBm( const glm::vec3 &v, uint8_t octaves, float lacunarity, float gain )
@@ -1965,14 +1965,14 @@ glm::vec4 dfBm( const glm::vec3 &v, uint8_t octaves, float lacunarity, float gai
 	glm::vec4 sum	= glm::vec4( 0.0f );
 	float freq		= 1.0f;
 	float amp		= 0.5f;
-
+	
 	for( uint8_t i = 0; i < octaves; i++ ){
 		glm::vec4 n	= dnoise( v * freq );
 		sum        += n*amp;
 		freq       *= lacunarity;
 		amp        *= gain;
 	}
-
+	
 	return sum;
 }
 vec5 dfBm( const glm::vec4 &v, uint8_t octaves, float lacunarity, float gain )
@@ -1980,7 +1980,7 @@ vec5 dfBm( const glm::vec4 &v, uint8_t octaves, float lacunarity, float gain )
 	vec5 sum = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
 	float freq  = 1.0f;
 	float amp   = 0.5f;
-
+	
 	for( uint8_t i = 0; i < octaves; i++ ){
 		vec5 n = dnoise( v * freq );
 		sum[0]			+= n[0]*amp;
@@ -1991,7 +1991,7 @@ vec5 dfBm( const glm::vec4 &v, uint8_t octaves, float lacunarity, float gain )
 		freq			*= lacunarity;
 		amp				*= gain;
 	}
-
+	
 	return sum;
 }
 
@@ -2027,7 +2027,7 @@ namespace details {
 		h = offset - glm::abs( h );
 		return h * h;
 	}
-
+	
 	template<typename T>
 	float ridgedMF_t( const T &input, float ridgeOffset, uint8_t octaves, float lacunarity, float gain )
 	{
@@ -2035,7 +2035,7 @@ namespace details {
 		float freq	= 1.0;
 		float amp	= 0.5;
 		float prev	= 1.0;
-
+		
 		for( uint8_t i = 0; i < octaves; i++ ){
 			float n	= ridge( noise( input * freq ), ridgeOffset );
 			sum		+= n*amp*prev;
@@ -2076,11 +2076,11 @@ float iqfBm( const glm::vec2 &v, uint8_t octaves, float lacunarity, float gain )
 		glm::vec3 d = dnoise( v * freq );
 		dx += d.y;
 		dy += d.y;
-		sum += amp * d.x / ( 1.0 + dx*dx + dy*dy );
+		sum += amp * d.x / ( 1.0f + dx*dx + dy*dy );
 		freq *= lacunarity;
 		amp *= gain;
 	}
-
+	
 	return sum;
 }
 float iqfBm( const glm::vec3 &v, uint8_t octaves, float lacunarity, float gain )
@@ -2096,11 +2096,11 @@ float iqfBm( const glm::vec3 &v, uint8_t octaves, float lacunarity, float gain )
 		dx += d.y;
 		dy += d.y;
 		dz += d.z;
-		sum += amp * d.x / ( 1.0 + dx*dx + dy*dy + d.z*d.z );
+		sum += amp * d.x / ( 1.0f + dx*dx + dy*dy + d.z*d.z );
 		freq *= lacunarity;
 		amp *= gain;
 	}
-
+	
 	return sum;
 }
 
@@ -2113,7 +2113,7 @@ float iqMatfBm( const glm::vec2 &v, uint8_t octaves, const glm::mat2 &mat, float
 	for( int i = 0; i < octaves; i++ ){
 		glm::vec3 n	= dnoise( pos );
 		noiseAccum	+= glm::vec2( n.y, n.z );
-		sum			+= amp * n.x / ( 1.0 + glm::dot( noiseAccum, noiseAccum ) );
+		sum			+= amp * n.x / ( 1.0f + glm::dot( noiseAccum, noiseAccum ) );
 		amp			*= gain;
 		pos			= mat * pos;
 	}
@@ -2129,7 +2129,7 @@ void seed( uint32_t s ) {
         details::perm[i] = details::perm[i + 256] = distribution( gen );
     }
 }
-
+	
 #undef FASTFLOOR
 #undef F2
 #undef G2
@@ -2137,5 +2137,5 @@ void seed( uint32_t s ) {
 #undef G3
 #undef F4
 #undef G4
-
+	
 };

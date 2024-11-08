@@ -1,9 +1,9 @@
 
-if (NOT EXISTS "/run/media/terminus/HDD/TCC_LEB/build/submodules/glfw/install_manifest.txt")
-    message(FATAL_ERROR "Cannot find install manifest: \"/run/media/terminus/HDD/TCC_LEB/build/submodules/glfw/install_manifest.txt\"")
+if (NOT EXISTS "/home/iagou/Desktop/TCC_LEB/build/submodules/glfw/install_manifest.txt")
+    message(FATAL_ERROR "Cannot find install manifest: \"/home/iagou/Desktop/TCC_LEB/build/submodules/glfw/install_manifest.txt\"")
 endif()
 
-file(READ "/run/media/terminus/HDD/TCC_LEB/build/submodules/glfw/install_manifest.txt" files)
+file(READ "/home/iagou/Desktop/TCC_LEB/build/submodules/glfw/install_manifest.txt" files)
 string(REGEX REPLACE "\n" ";" files "${files}")
 
 foreach (file ${files})

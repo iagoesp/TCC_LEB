@@ -13,9 +13,24 @@ uniform PerFrameVariables {
     mat4 u_ModelViewProjectionMatrix;
     vec4 u_FrustumPlanes[6];
 };
-
+uniform float u_Height0;
+uniform float u_Height1;
+uniform float u_Height2;
+uniform float u_Height3;
+uniform vec3 u_ColorH0;
+uniform vec3 u_ColorH1;
+uniform vec3 u_ColorH2;
+uniform vec3 u_ColorH3;
+uniform float u_NoiseH0;
+uniform float u_NoiseH1;
+uniform float u_NoiseH2;
+uniform float u_NoiseH3;
+uniform int u_DerivativeNormals;
 uniform float u_TargetEdgeLength;
 uniform float u_LodFactor;
+
+
+
 #if FLAG_DISPLACE
 uniform sampler2D u_DmapSampler;
 uniform sampler2D u_SmapSampler;
@@ -31,7 +46,6 @@ uniform float u_MinLodVariance;
  *
  */
 
-float sizeFbm = 0.25f;
 float hash(float n) { return fract(sin(n) * 1e4); }
 float hash(vec2 p) { return fract(1e4 * sin(17.0 * p.x + p.y * 0.1) * (0.1 + abs(sin(p.y * 13.0 + p.x)))); }
 
@@ -55,15 +69,24 @@ float noise(vec3 x) {
 const mat3 m3  = mat3( 0.00,  0.80,  0.60,
                       -0.80,  0.36, -0.48,
                       -0.60, -0.48,  0.64 );
+const mat3 m3i = mat3( 0.00, -0.80, -0.60,
+                       0.80,  0.36, -0.48,
+                       0.60, -0.48,  0.64 );
 
-float fbm( vec3 p ){
-    float f = 0.1f;
-    f += 0.5000*noise( p ); p = m3*p*2.02;
-    f += 0.2500*noise( p ); p = m3*p*2.03;
-    f += 0.1250*noise( p ); p = m3*p*2.01;
-    f += 0.0625*noise( p );
+bool ComputeDerivateNormals(){
+    return bool(u_DerivativeNormals);
+}
 
-    return f/0.9375;
+float fbm(vec3 p, int octaves, float gain, float amplitude, float frequency, float size){
+    float f = 0.0;
+    for(int i=0;i<octaves;i++){
+        f+=noise(p)*frequency;
+        p = m3*p*(2.f+i/100.f);
+        frequency /= 2.f;
+    }
+
+    f *= size;
+    return f/amplitude;
 }
 
 vec4[3] DecodeTriangleVertices(in const cbt_Node node)
@@ -77,13 +100,15 @@ vec4[3] DecodeTriangleVertices(in const cbt_Node node)
     
 
 #if FLAG_DISPLACE
+
     p1.z = u_DmapFactor * texture(u_DmapSampler, p1.xy).r;
     p2.z = u_DmapFactor * texture(u_DmapSampler, p2.xy).r;
     p3.z = u_DmapFactor * texture(u_DmapSampler, p3.xy).r;
-/*     
+    /*
     p1.z += u_DmapFactor * fbm(p1.xyz*sizeFbm)*sizeFbm;
     p2.z += u_DmapFactor * fbm(p2.xyz*sizeFbm)*sizeFbm;
-    p3.z += u_DmapFactor * fbm(p3.xyz*sizeFbm)*sizeFbm; */
+    p3.z += u_DmapFactor * fbm(p3.xyz*sizeFbm)*sizeFbm;
+    */
     
 
 #endif
@@ -291,16 +316,19 @@ vec4 BarycentricInterpolation(in vec4 v[3], in vec2 u)
 }
 
 float LOD2(vec3 posV){
-    vec3 cam = vec3(inverse(u_ViewProjectionMatrix)[3].xyz);
-    float dist = distance(posV, cam);
-    return pow(2,max(1, int(log(dist)/log(32)))); 
-
+    if(false)
+        return TERRAIN_PATCH_TESS_FACTOR;
+    else{
+        vec3 cam = vec3(inverse(u_ViewProjectionMatrix)[3].xyz);
+        float dist = distance(posV, cam);
+        return pow(3.f,max(1,log(log(dist)))); 
+    }
 }
 
 
 int LOD(vec3 chunkPos)
 {
-    float lodNear = 1.f;
+    float lodNear = 10.f;
     float lodFar = 1024.f;
     float chunkSize = 5.f;
     vec3 cameraPos = vec3(inverse(u_ViewProjectionMatrix)[3].xyz);
@@ -314,7 +342,7 @@ int LOD(vec3 chunkPos)
         //full detail
         if (dist < lodNear)
         {
-            return int(512 * TERRAIN_PATCH_TESS_FACTOR);
+            return int(512 * TERRAIN_PATCH_TESS_FACTOR*10);
         }
         //interpolate
         else
@@ -334,6 +362,287 @@ int LOD(vec3 chunkPos)
         //float invDistance = (terrainSize-distance(cameraPos, realPos) + ivd) / float(terrainSize);
         //return int(max(invDistance * maxLevel * lod, minLevel));
 }
+
+
+int perm[512] = {151,160,137,91,90,15,
+		131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
+		190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
+		88,237,149,56,87,174,20,125,136,171,168, 68,175,74,165,71,134,139,48,27,166,
+		77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,
+		102,143,54, 65,25,63,161, 1,216,80,73,209,76,132,187,208, 89,18,169,200,196,
+		135,130,116,188,159,86,164,100,109,198,173,186, 3,64,52,217,226,250,124,123,
+		5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,
+		223,183,170,213,119,248,152, 2,44,154,163, 70,221,153,101,155,167, 43,172,9,
+		129,22,39,253, 19,98,108,110,79,113,224,232,178,185, 112,104,218,246,97,228,
+		251,34,242,193,238,210,144,12,191,179,162,241, 81,51,145,235,249,14,239,107,
+		49,192,214, 31,181,199,106,157,184, 84,204,176,115,121,50,45,127, 4,150,254,
+		138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180,
+		151,160,137,91,90,15,
+		131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
+		190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
+		88,237,149,56,87,174,20,125,136,171,168, 68,175,74,165,71,134,139,48,27,166,
+		77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,
+		102,143,54, 65,25,63,161, 1,216,80,73,209,76,132,187,208, 89,18,169,200,196,
+		135,130,116,188,159,86,164,100,109,198,173,186, 3,64,52,217,226,250,124,123,
+		5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,
+		223,183,170,213,119,248,152, 2,44,154,163, 70,221,153,101,155,167, 43,172,9,
+		129,22,39,253, 19,98,108,110,79,113,224,232,178,185, 112,104,218,246,97,228,
+		251,34,242,193,238,210,144,12,191,179,162,241, 81,51,145,235,249,14,239,107,
+		49,192,214, 31,181,199,106,157,184, 84,204,176,115,121,50,45,127, 4,150,254,
+		138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
+	};
+
+    float grad2lut[8][2] = {
+		{ -1.0f, -1.0f }, { 1.0f, 0.0f } , { -1.0f, 0.0f } , { 1.0f, 1.0f } ,
+		{ -1.0f, 1.0f } , { 0.0f, -1.0f } , { 0.0f, 1.0f } , { 1.0f, -1.0f }
+	};
+	
+	/*
+	 * Gradient directions for 3D.
+	 * These vectors are based on the midpoints of the 12 edges of a cube.
+	 * A larger array of random unit length vectors would also do the job,
+	 * but these 12 (including 4 repeats to make the array length a power
+	 * of two) work better. They are not random, they are carefully chosen
+	 * to represent a small, isotropic set of directions.
+	 */
+	
+	float grad3lut[16][3] = {
+		{ 1.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 1.0f }, // 12 cube edges
+		{ -1.0f, 0.0f, 1.0f }, { 0.0f, -1.0f, 1.0f },
+		{ 1.0f, 0.0f, -1.0f }, { 0.0f, 1.0f, -1.0f },
+		{ -1.0f, 0.0f, -1.0f }, { 0.0f, -1.0f, -1.0f },
+		{ 1.0f, -1.0f, 0.0f }, { 1.0f, 1.0f, 0.0f },
+		{ -1.0f, 1.0f, 0.0f }, { -1.0f, -1.0f, 0.0f },
+		{ 1.0f, 0.0f, 1.0f }, { -1.0f, 0.0f, 1.0f }, // 4 repeats to make 16
+		{ 0.0f, 1.0f, -1.0f }, { 0.0f, -1.0f, -1.0f }
+	};
+	
+	float grad4lut[32][4] = {
+		{ 0.0f, 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f, 1.0f, -1.0f }, { 0.0f, 1.0f, -1.0f, 1.0f }, { 0.0f, 1.0f, -1.0f, -1.0f }, // 32 tesseract edges
+		{ 0.0f, -1.0f, 1.0f, 1.0f }, { 0.0f, -1.0f, 1.0f, -1.0f }, { 0.0f, -1.0f, -1.0f, 1.0f }, { 0.0f, -1.0f, -1.0f, -1.0f },
+		{ 1.0f, 0.0f, 1.0f, 1.0f }, { 1.0f, 0.0f, 1.0f, -1.0f }, { 1.0f, 0.0f, -1.0f, 1.0f }, { 1.0f, 0.0f, -1.0f, -1.0f },
+		{ -1.0f, 0.0f, 1.0f, 1.0f }, { -1.0f, 0.0f, 1.0f, -1.0f }, { -1.0f, 0.0f, -1.0f, 1.0f }, { -1.0f, 0.0f, -1.0f, -1.0f },
+		{ 1.0f, 1.0f, 0.0f, 1.0f }, { 1.0f, 1.0f, 0.0f, -1.0f }, { 1.0f, -1.0f, 0.0f, 1.0f }, { 1.0f, -1.0f, 0.0f, -1.0f },
+		{ -1.0f, 1.0f, 0.0f, 1.0f }, { -1.0f, 1.0f, 0.0f, -1.0f }, { -1.0f, -1.0f, 0.0f, 1.0f }, { -1.0f, -1.0f, 0.0f, -1.0f },
+		{ 1.0f, 1.0f, 1.0f, 0.0f }, { 1.0f, 1.0f, -1.0f, 0.0f }, { 1.0f, -1.0f, 1.0f, 0.0f }, { 1.0f, -1.0f, -1.0f, 0.0f },
+		{ -1.0f, 1.0f, 1.0f, 0.0f }, { -1.0f, 1.0f, -1.0f, 0.0f }, { -1.0f, -1.0f, 1.0f, 0.0f }, { -1.0f, -1.0f, -1.0f, 0.0f }
+	};
+	
+	/*
+	 * For 3D, we define two orthogonal vectors in the desired rotation plane.
+	 * These vectors are based on the midpoints of the 12 edges of a cube,
+	 * they all rotate in their own plane and are never coincident or collinear.
+	 * A larger array of random vectors would also do the job, but these 12
+	 * (including 4 repeats to make the array length a power of two) work better.
+	 * They are not random, they are carefully chosen to represent a small
+	 * isotropic set of directions for any rotation angle.
+	 */
+	
+	/* a = sqrt(2)/sqrt(3) = 0.816496580 */
+    #define a 0.81649658f
+
+	
+	void grad3( int hash, out float gx, out float gy, out float gz ) {
+		int h = hash & 15;
+		gx = grad3lut[h][0];
+		gy = grad3lut[h][1];
+		gz = grad3lut[h][2];
+		return;
+	}
+	
+
+
+/* Skewing factors for 2D simplex grid:
+ * F2 = 0.5*(sqrt(3.0)-1.0)
+ * G2 = (3.0-Math.sqrt(3.0))/6.0
+ */
+#define F2 0.366025403f
+#define G2 0.211324865f
+/* Skewing factors for 3D simplex grid:
+ * F3 = 1/3
+ * G3 = 1/6 */
+#define F3 0.333333333f
+#define G3 0.166666667f
+
+// The skewing and unskewing factors are hairy again for the 4D case
+#define F4 0.309016994f // F4 = (sqrt(5.0)-1.0)/4.0
+#define G4 0.138196601f // G4 = (5.0-sqrt(5.0))/20.0
+
+#define FASTFLOOR(x) ( ((x)>0) ? (int(x)) : ((int(x))-1) )
+
+vec4 DerivateNoise(vec3 v)
+{
+	float n0, n1, n2, n3; /* Noise contributions from the four simplex corners */
+	float noise;          /* Return value */
+	float gx0, gy0, gz0, gx1, gy1, gz1; /* Gradients at simplex corners */
+	float gx2, gy2, gz2, gx3, gy3, gz3;
+	
+	/* Skew the input space to determine which simplex cell we're in */
+	float s = (v.x+v.y+v.z)*F3; /* Very nice and simple skew factor for 3D */
+	float xs = v.x+s;
+	float ys = v.y+s;
+	float zs = v.z+s;
+	int i = FASTFLOOR(xs);
+	int j = FASTFLOOR(ys);
+	int k = FASTFLOOR(zs);
+	
+	float t = float(i+j+k)*G3;
+	float X0 = i-t; /* Unskew the cell origin back to (x,y,z) space */
+	float Y0 = j-t;
+	float Z0 = k-t;
+	float x0 = v.x-X0; /* The x,y,z distances from the cell origin */
+	float y0 = v.y-Y0;
+	float z0 = v.z-Z0;
+	
+	/* For the 3D case, the simplex shape is a slightly irregular tetrahedron.
+	 * Determine which simplex we are in. */
+	int i1, j1, k1; /* Offsets for second corner of simplex in (i,j,k) coords */
+	int i2, j2, k2; /* Offsets for third corner of simplex in (i,j,k) coords */
+	
+	/* TODO: This code would benefit from a backport from the GLSL version! */
+	if(x0>=y0) {
+		if(y0>=z0)
+		{ i1=1; j1=0; k1=0; i2=1; j2=1; k2=0; } /* X Y Z order */
+		else if(x0>=z0) { i1=1; j1=0; k1=0; i2=1; j2=0; k2=1; } /* X Z Y order */
+		else { i1=0; j1=0; k1=1; i2=1; j2=0; k2=1; } /* Z X Y order */
+	}
+	else { // x0<y0
+		if(y0<z0) { i1=0; j1=0; k1=1; i2=0; j2=1; k2=1; } /* Z Y X order */
+		else if(x0<z0) { i1=0; j1=1; k1=0; i2=0; j2=1; k2=1; } /* Y Z X order */
+		else { i1=0; j1=1; k1=0; i2=1; j2=1; k2=0; } /* Y X Z order */
+	}
+	
+	/* A step of (1,0,0) in (i,j,k) means a step of (1-c,-c,-c) in (x,y,z),
+	 * a step of (0,1,0) in (i,j,k) means a step of (-c,1-c,-c) in (x,y,z), and
+	 * a step of (0,0,1) in (i,j,k) means a step of (-c,-c,1-c) in (x,y,z), where
+	 * c = 1/6.   */
+	
+	float x1 = x0 - i1 + G3; /* Offsets for second corner in (x,y,z) coords */
+	float y1 = y0 - j1 + G3;
+	float z1 = z0 - k1 + G3;
+	float x2 = x0 - i2 + 2.0f * G3; /* Offsets for third corner in (x,y,z) coords */
+	float y2 = y0 - j2 + 2.0f * G3;
+	float z2 = z0 - k2 + 2.0f * G3;
+	float x3 = x0 - 1.0f + 3.0f * G3; /* Offsets for last corner in (x,y,z) coords */
+	float y3 = y0 - 1.0f + 3.0f * G3;
+	float z3 = z0 - 1.0f + 3.0f * G3;
+	
+	/* Wrap the integer indices at 256, to avoid indexing perm[] out of bounds */
+	int ii = i & 0xff;
+	int jj = j & 0xff;
+	int kk = k & 0xff;
+	
+	/* Calculate the contribution from the four corners */
+	float t0 = 0.6f - x0*x0 - y0*y0 - z0*z0;
+	float t20, t40;
+	if(t0 < 0.0f) n0 = t0 = t20 = t40 = gx0 = gy0 = gz0 = 0.0f;
+	else {
+		grad3( perm[ii + perm[jj + perm[kk]]], gx0, gy0, gz0 );
+		t20 = t0 * t0;
+		t40 = t20 * t20;
+		n0 = t40 * ( gx0 * x0 + gy0 * y0 + gz0 * z0 );
+	}
+	
+	float t1 = 0.6f - x1*x1 - y1*y1 - z1*z1;
+	float t21, t41;
+	if(t1 < 0.0f) n1 = t1 = t21 = t41 = gx1 = gy1 = gz1 = 0.0f;
+	else {
+		grad3( perm[ii + i1 + perm[jj + j1 + perm[kk + k1]]], gx1, gy1, gz1 );
+		t21 = t1 * t1;
+		t41 = t21 * t21;
+		n1 = t41 * ( gx1 * x1 + gy1 * y1 + gz1 * z1 );
+	}
+	
+	float t2 = 0.6f - x2*x2 - y2*y2 - z2*z2;
+	float t22, t42;
+	if(t2 < 0.0f) n2 = t2 = t22 = t42 = gx2 = gy2 = gz2 = 0.0f;
+	else {
+		grad3( perm[ii + i2 + perm[jj + j2 + perm[kk + k2]]], gx2, gy2, gz2 );
+		t22 = t2 * t2;
+		t42 = t22 * t22;
+		n2 = t42 * ( gx2 * x2 + gy2 * y2 + gz2 * z2 );
+	}
+	
+	float t3 = 0.6f - x3*x3 - y3*y3 - z3*z3;
+	float t23, t43;
+	if(t3 < 0.0f) n3 = t3 = t23 = t43 = gx3 = gy3 = gz3 = 0.0f;
+	else {
+		grad3( perm[ii + 1 + perm[jj + 1 + perm[kk + 1]]], gx3, gy3, gz3 );
+		t23 = t3 * t3;
+		t43 = t23 * t23;
+		n3 = t43 * ( gx3 * x3 + gy3 * y3 + gz3 * z3 );
+	}
+	
+	/*  Add contributions from each corner to get the final noise value.
+	 * The result is scaled to return values in the range [-1,1] */
+#ifdef SIMPLEX_DERIVATIVES_RESCALE
+	noise = 34.525277436f * (n0 + n1 + n2 + n3);
+#else
+	noise = 28.0f * (n0 + n1 + n2 + n3);
+#endif
+	
+	/* Compute derivative, if requested by supplying non-null pointers
+	 * for the last three arguments */
+	/*  A straight, unoptimised calculation would be like:
+	 *     *dnoise_dx = -8.0f * t20 * t0 * x0 * dot(gx0, gy0, gz0, x0, y0, z0) + t40 * gx0;
+	 *    *dnoise_dy = -8.0f * t20 * t0 * y0 * dot(gx0, gy0, gz0, x0, y0, z0) + t40 * gy0;
+	 *    *dnoise_dz = -8.0f * t20 * t0 * z0 * dot(gx0, gy0, gz0, x0, y0, z0) + t40 * gz0;
+	 *    *dnoise_dx += -8.0f * t21 * t1 * x1 * dot(gx1, gy1, gz1, x1, y1, z1) + t41 * gx1;
+	 *    *dnoise_dy += -8.0f * t21 * t1 * y1 * dot(gx1, gy1, gz1, x1, y1, z1) + t41 * gy1;
+	 *    *dnoise_dz += -8.0f * t21 * t1 * z1 * dot(gx1, gy1, gz1, x1, y1, z1) + t41 * gz1;
+	 *    *dnoise_dx += -8.0f * t22 * t2 * x2 * dot(gx2, gy2, gz2, x2, y2, z2) + t42 * gx2;
+	 *    *dnoise_dy += -8.0f * t22 * t2 * y2 * dot(gx2, gy2, gz2, x2, y2, z2) + t42 * gy2;
+	 *    *dnoise_dz += -8.0f * t22 * t2 * z2 * dot(gx2, gy2, gz2, x2, y2, z2) + t42 * gz2;
+	 *    *dnoise_dx += -8.0f * t23 * t3 * x3 * dot(gx3, gy3, gz3, x3, y3, z3) + t43 * gx3;
+	 *    *dnoise_dy += -8.0f * t23 * t3 * y3 * dot(gx3, gy3, gz3, x3, y3, z3) + t43 * gy3;
+	 *    *dnoise_dz += -8.0f * t23 * t3 * z3 * dot(gx3, gy3, gz3, x3, y3, z3) + t43 * gz3;
+	 */
+	float temp0 = t20 * t0 * ( gx0 * x0 + gy0 * y0 + gz0 * z0 );
+	float dnoise_dx = temp0 * x0;
+	float dnoise_dy = temp0 * y0;
+	float dnoise_dz = temp0 * z0;
+	float temp1 = t21 * t1 * ( gx1 * x1 + gy1 * y1 + gz1 * z1 );
+	dnoise_dx += temp1 * x1;
+	dnoise_dy += temp1 * y1;
+	dnoise_dz += temp1 * z1;
+	float temp2 = t22 * t2 * ( gx2 * x2 + gy2 * y2 + gz2 * z2 );
+	dnoise_dx += temp2 * x2;
+	dnoise_dy += temp2 * y2;
+	dnoise_dz += temp2 * z2;
+	float temp3 = t23 * t3 * ( gx3 * x3 + gy3 * y3 + gz3 * z3 );
+	dnoise_dx += temp3 * x3;
+	dnoise_dy += temp3 * y3;
+	dnoise_dz += temp3 * z3;
+	dnoise_dx *= -8.0f;
+	dnoise_dy *= -8.0f;
+	dnoise_dz *= -8.0f;
+	dnoise_dx += t40 * gx0 + t41 * gx1 + t42 * gx2 + t43 * gx3;
+	dnoise_dy += t40 * gy0 + t41 * gy1 + t42 * gy2 + t43 * gy3;
+	dnoise_dz += t40 * gz0 + t41 * gz1 + t42 * gz2 + t43 * gz3;
+	dnoise_dx *= 28.0f; /* Scale derivative to match the noise scaling */
+	dnoise_dy *= 28.0f;
+	dnoise_dz *= 28.0f;
+	
+	return vec4( noise, dnoise_dx, dnoise_dy, dnoise_dz );
+}
+
+
+vec4 DerivativeFBM(vec3 v, int octaves, float lacunarity, float gain )
+{
+	vec4 sum	= vec4(0.0f);
+	float freq		= 1.0f;
+	float amp		= 0.5f;
+	
+	for( int i = 0; i < octaves; i++ ){
+		vec4 n	= DerivateNoise( v * freq );
+		sum        += n*amp;
+		freq       *= lacunarity;
+		amp        *= gain;
+	}
+	
+	return sum;
+}
+
 /*******************************************************************************
  * GenerateVertex -- Computes the final vertex position
  *
@@ -351,14 +660,75 @@ VertexAttribute TessellateTriangle(
     vec4 position = vec4(texCoord, 0, 1);
 
 #if FLAG_DISPLACE
+    //vec4 fbmD = DerivativeFBM(position.xyz, 16, 1.95f, 0.5f);
+    //position.z = u_DmapFactor * fbmD.x;//textureLod(u_DmapSampler, texCoord, 0.0).r;
     position.z = u_DmapFactor * textureLod(u_DmapSampler, texCoord, 0.0).r;
-    //position.z += u_DmapFactor * fbm(position.xyz*sizeFbm)*sizeFbm;
+    
 #endif
 
     return VertexAttribute(position, texCoord);
 }
 
 
+// Hash function for noise generation
+float fhash(vec3 p) {
+    p = fract(p * 0.3183099 + 0.1);
+    p *= 17.0;
+    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+
+// 3D Noise function
+float fnoise(vec3 x) {
+    vec3 i = floor(x);
+    vec3 f = fract(x);
+
+    // Eight corners in 3D space
+    float n000 = fhash(i + vec3(0.0, 0.0, 0.0));
+    float n100 = fhash(i + vec3(1.0, 0.0, 0.0));
+    float n010 = fhash(i + vec3(0.0, 1.0, 0.0));
+    float n110 = fhash(i + vec3(1.0, 1.0, 0.0));
+    float n001 = fhash(i + vec3(0.0, 0.0, 1.0));
+    float n101 = fhash(i + vec3(1.0, 0.0, 1.0));
+    float n011 = fhash(i + vec3(0.0, 1.0, 1.0));
+    float n111 = fhash(i + vec3(1.0, 1.0, 1.0));
+
+    vec3 u = f * f * (3.0 - 2.0 * f);
+
+    return mix(
+        mix(mix(n000, n100, u.x), mix(n010, n110, u.x), u.y),
+        mix(mix(n001, n101, u.x), mix(n011, n111, u.x), u.y),
+        u.z
+    );
+}
+
+// Fractional Brownian Motion function
+float ffbm(vec3 x) {
+    float v = 0.0f;
+    float amplitude = 0.5f;
+    vec3 shift = vec3(100.0f);
+    for (int i = 0; i < 5; ++i) {
+        v += amplitude * fnoise(x);
+        x = x * 2.0f + shift;
+        amplitude *= 0.5f;
+    }
+    return v;
+}
+
+ vec3 heightblend(vec3 tex1, float height1, vec3 tex2, float height2)
+{
+    float heightBlendFactor = 1.f;
+    float height_start = max(height1, height2 - 1) - heightBlendFactor;
+    float level1 = max(height1 - height_start, 0);
+    float level2 = max(height2 - height_start -1, 0);
+    return ((tex1 * level1) + (tex2 * level2)) / (level1 + level2);
+}
+
+ vec3 surf(vec3 tex1, float h1, vec3 tex2, float h2)
+{
+    vec3 t1 = tex1;
+    vec3 t2 = tex2;
+    return heightblend(t1, h1, t2, h2);
+}
 
 /*******************************************************************************
  * ShadeFragment -- Fragement shading routine
@@ -366,14 +736,15 @@ VertexAttribute TessellateTriangle(
  */
 #ifdef FRAGMENT_SHADER
 #if FLAG_WIRE
-vec4 ShadeFragment(vec2 texCoord, vec3 worldPos, vec3 distance)
+vec4 ShadeFragment(vec2 texCoord, vec3 worldPos, vec3 vNormal, vec3 distance)
 #else
-vec4 ShadeFragment(vec2 texCoord, vec3 worldPos)
+//editar para colocar normal aqui
+vec4 ShadeFragment(vec2 texCoord, vec3 worldPos, vec3 vNormal)
 #endif
 {
 #if FLAG_WIRE
-    const float wireScale = 1.1; // scale of the wire in pixel
-    vec4 wireColor = vec4(0.0, 0.0, 0.0, 1.0);
+    const float wireScale = 0.5; // scale of the wire in pixel
+    vec4 wireColor = vec4(0.0);
     vec3 distanceSquared = distance * distance;
     float nearestDistance = min(min(distanceSquared.x, distanceSquared.y), distanceSquared.z);
     float blendFactor = exp2(-nearestDistance / wireScale);
@@ -382,8 +753,11 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos)
 #if FLAG_DISPLACE
 #if 1
     // slope
-    vec2 smap = texture(u_SmapSampler, texCoord).rg * u_DmapFactor * 0.03;
-    vec3 n = normalize(vec3(-smap, 1));
+    vec3 n = vec3(1.0f);
+    if(!ComputeDerivateNormals())
+        n = texture(u_SmapSampler, texCoord).rbg * 2.0 - 1.0;
+    else
+        n = vNormal;
 #else // compute the slope from the dmap directly
     float filterSize = 1.0f / float(textureSize(u_DmapSampler, 0).x);// sqrt(dot(dFdx(texCoord), dFdy(texCoord)));
     float sx0 = textureLod(u_DmapSampler, texCoord - vec2(filterSize, 0.0), 0.0).r;
@@ -408,22 +782,45 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos)
     return vec4(mix(vec3(albedo * d / 3.14159), vec3(0.5), 1.0 - exp2(-z)), 1);
 
 #elif SHADING_DIFFUSE
-    float a = 0.09f;
-    float b = 0.00;
-    float c = 0.00;
-    float d1 = 0.00f;
-    float e = 0.00f;
-    float f = 0.00f;
-    float m = a * fbm( 1.f * worldPos*0.1f  )
-           + b * fbm( 2.f * worldPos *0.1f )
-           + c * fbm( 4.f * worldPos *0.1f )
-           + d1 * fbm( 8.f * worldPos *0.1f )
-           + e * fbm(16.f * worldPos *0.1f)
-           + f * fbm(32.f * worldPos *0.1f);
-    m = n.y * m / (a + b + c + d1 + e + f);
-    vec3 wi = normalize(vec3(1, 1, 1));
-    float d = dot(wi, n) * 0.5 + 0.5;
-    vec3 albedo = vec3(252, 197, 150) / 255.0f;
+    vec3 wi = normalize(vec3(1.0, 1.0, 1.0));
+    float diffuse = dot(wi, n) * 0.5f + 1.0f;
+    float peakLevel = u_Height3;
+    float snowLevel = u_Height2;
+    float rockLevel = u_Height1;
+    float sandLevel = u_Height0;
+    float waterLevel = 0.0;
+    float height = worldPos.y;
+    vec3 color;
+    float noisePeak = ffbm(worldPos * 1.f / u_NoiseH3);
+    float noiseRock = ffbm(worldPos * 1.f / u_NoiseH2);
+    float noiseSand = ffbm(worldPos * 1.f / u_NoiseH1);
+    float noiseWater = ffbm(worldPos * 1.f / u_NoiseH0);
+    vec3 height0 = vec3(u_ColorH0[0],u_ColorH0[1],u_ColorH0[2]);
+    vec3 height1 = vec3(u_ColorH1[0],u_ColorH1[1],u_ColorH1[2]);
+    vec3 height2 = vec3(u_ColorH2[0],u_ColorH2[1],u_ColorH2[2]);
+    vec3 height3 = vec3(u_ColorH3[0],u_ColorH3[1],u_ColorH3[2]);
+    vec3 peakColor = height0;
+    vec3 snowColor = mix(height0, height1, noisePeak);
+    vec3 rockColor = mix(height1, height2, noiseRock);
+    vec3 sandColor = mix(height2, height3, noiseSand);
+    vec3 waterColor = mix(height3, max(height3-0.55f, 0.0f), noiseWater);
+
+    if (height > peakLevel) {
+        color = peakColor; // Branco
+    } else if (height > snowLevel) {
+        float t = smoothstep(snowLevel, peakLevel, height);
+        color = mix(snowColor, peakColor, t);
+    } else if (height > rockLevel) {
+        float t = smoothstep(rockLevel, snowLevel, height);
+        color = mix(rockColor, snowColor, t);
+    } else if (height > sandLevel) {    
+        float t = smoothstep(sandLevel, rockLevel, height);
+        color = mix(sandColor, rockColor, t);
+    } else {    
+        float t = smoothstep(waterLevel, sandLevel, height);
+        color = mix(waterColor, sandColor, t);
+    }
+    vec3 albedo = color;
 
     vec3 camPos = u_CameraMatrix[3].xyz;
     vec3 extinction;
@@ -432,18 +829,19 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos)
                                   wi.zxy,
                                   extinction);
 #if FLAG_WIRE
-    vec3 shading = mix((d / 3.14159) * albedo, wireColor.xyz, blendFactor);
+    vec3 shading = mix(vec3(1.0), wireColor.xyz, blendFactor);
+    return vec4(shading, 0.0);
 #else
-    vec3 shading = (d / 3.14159) * albedo;
+    vec3 shading = (diffuse / 3.14159) * albedo;
 #endif
 
-    return vec4(shading * extinction +  inscatter * 0.5, 1);
+    return vec4(shading, 0.0);
 #elif SHADING_NORMALS
 
-    return vec4(abs(n), 1);
+    return vec4(abs(n), 1.0);
 #elif SHADING_COLOR
     float x = 100;
-    return vec4(vec3(worldPos.y/2514), 1);
+    return vec4(vec3(worldPos.y)/2500, 1);
 #else
     return vec4(1, 0, 0, 1);
 #endif
