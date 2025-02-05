@@ -1,7 +1,6 @@
 
 /*******************************************************************************
  * Uniform Data -- Global variables for terrain rendering
- *
  */
 layout(std140, column_major, binding = BUFFER_BINDING_TERRAIN_VARIABLES)
 uniform PerFrameVariables {
@@ -13,23 +12,29 @@ uniform PerFrameVariables {
     mat4 u_ModelViewProjectionMatrix;
     vec4 u_FrustumPlanes[6];
 };
+
+// Variáveis para configurar as alturas do terreno
 uniform float u_Height0;
 uniform float u_Height1;
 uniform float u_Height2;
 uniform float u_Height3;
+
+// Variáveis para atribuir cores baseadas na altura do terreno
 uniform vec3 u_ColorH0;
 uniform vec3 u_ColorH1;
 uniform vec3 u_ColorH2;
 uniform vec3 u_ColorH3;
+
+// Variáveis para definir alterar o ruído em diferentes níveis de altura
 uniform float u_NoiseH0;
 uniform float u_NoiseH1;
 uniform float u_NoiseH2;
 uniform float u_NoiseH3;
+
+// Não usa, mas seria para definir se as derivadas analíticas das normais serão utilizadas em booleano
 uniform int u_DerivativeNormals;
 uniform float u_TargetEdgeLength;
 uniform float u_LodFactor;
-
-
 
 #if FLAG_DISPLACE
 uniform sampler2D u_DmapSampler;
@@ -45,27 +50,6 @@ uniform float u_MinLodVariance;
  * DecodeTriangleVertices -- Decodes the triangle vertices in local space
  *
  */
-
-float hash(float n) { return fract(sin(n) * 1e4); }
-float hash(vec2 p) { return fract(1e4 * sin(17.0 * p.x + p.y * 0.1) * (0.1 + abs(sin(p.y * 13.0 + p.x)))); }
-
-float noise(vec3 x) {
-	const vec3 step = vec3(110, 241, 171);
-
-	vec3 i = floor(x);
-	vec3 f = fract(x);
-
-	// For performance, compute the base input to a 1D hash from the integer part of the argument and the
-	// incremental change to the 1D based on the 3D -> 1D wrapping
-    float n = dot(i, step);
-
-	vec3 u = f * f * (3.0 - 2.0 * f);
-	return mix(mix(mix( hash(n + dot(step, vec3(0, 0, 0))), hash(n + dot(step, vec3(1, 0, 0))), u.x),
-                   mix( hash(n + dot(step, vec3(0, 1, 0))), hash(n + dot(step, vec3(1, 1, 0))), u.x), u.y),
-               mix(mix( hash(n + dot(step, vec3(0, 0, 1))), hash(n + dot(step, vec3(1, 0, 1))), u.x),
-                   mix( hash(n + dot(step, vec3(0, 1, 1))), hash(n + dot(step, vec3(1, 1, 1))), u.x), u.y), u.z);
-}
-
 const mat3 m3  = mat3( 0.00,  0.80,  0.60,
                       -0.80,  0.36, -0.48,
                       -0.60, -0.48,  0.64 );
@@ -75,18 +59,6 @@ const mat3 m3i = mat3( 0.00, -0.80, -0.60,
 
 bool ComputeDerivateNormals(){
     return bool(u_DerivativeNormals);
-}
-
-float fbm(vec3 p, int octaves, float gain, float amplitude, float frequency, float size){
-    float f = 0.0;
-    for(int i=0;i<octaves;i++){
-        f+=noise(p)*frequency;
-        p = m3*p*(2.f+i/100.f);
-        frequency /= 2.f;
-    }
-
-    f *= size;
-    return f/amplitude;
 }
 
 vec4[3] DecodeTriangleVertices(in const cbt_Node node)
@@ -103,13 +75,7 @@ vec4[3] DecodeTriangleVertices(in const cbt_Node node)
 
     p1.z = u_DmapFactor * texture(u_DmapSampler, p1.xy).r;
     p2.z = u_DmapFactor * texture(u_DmapSampler, p2.xy).r;
-    p3.z = u_DmapFactor * texture(u_DmapSampler, p3.xy).r;
-    /*
-    p1.z += u_DmapFactor * fbm(p1.xyz*sizeFbm)*sizeFbm;
-    p2.z += u_DmapFactor * fbm(p2.xyz*sizeFbm)*sizeFbm;
-    p3.z += u_DmapFactor * fbm(p3.xyz*sizeFbm)*sizeFbm;
-    */
-    
+    p3.z = u_DmapFactor * texture(u_DmapSampler, p3.xy).r;    
 
 #endif
 
@@ -324,45 +290,6 @@ float LOD2(vec3 posV){
         return pow(3.f,max(1,log(log(dist)))); 
     }
 }
-
-
-int LOD(vec3 chunkPos)
-{
-    float lodNear = 10.f;
-    float lodFar = 1024.f;
-    float chunkSize = 5.f;
-    vec3 cameraPos = vec3(inverse(u_ViewProjectionMatrix)[3].xyz);
-
-	vec3 realPos = chunkPos;
-
-    float dist = distance(cameraPos, realPos);
-
-    if (dist < lodFar)
-    {
-        //full detail
-        if (dist < lodNear)
-        {
-            return int(512 * TERRAIN_PATCH_TESS_FACTOR*10);
-        }
-        //interpolate
-        else
-        {
-            float gap = lodFar - lodNear;
-            float perc = lodFar - dist;
-
-            float levelGap = 5.f-1.f;
-
-            return int((perc/gap*levelGap) + 1.f);
-        }
-    }
-    //least detail
-    else
-        return int(1);
-
-        //float invDistance = (terrainSize-distance(cameraPos, realPos) + ivd) / float(terrainSize);
-        //return int(max(invDistance * maxLevel * lod, minLevel));
-}
-
 
 int perm[512] = {151,160,137,91,90,15,
 		131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
@@ -626,7 +553,7 @@ vec4 DerivateNoise(vec3 v)
 	return vec4( noise, dnoise_dx, dnoise_dy, dnoise_dz );
 }
 
-
+// Derivada analítca do fBm
 vec4 DerivativeFBM(vec3 v, int octaves, float lacunarity, float gain )
 {
 	vec4 sum	= vec4(0.0f);
@@ -660,8 +587,6 @@ VertexAttribute TessellateTriangle(
     vec4 position = vec4(texCoord, 0, 1);
 
 #if FLAG_DISPLACE
-    //vec4 fbmD = DerivativeFBM(position.xyz, 16, 1.95f, 0.5f);
-    //position.z = u_DmapFactor * fbmD.x;//textureLod(u_DmapSampler, texCoord, 0.0).r;
     position.z = u_DmapFactor * textureLod(u_DmapSampler, texCoord, 0.0).r;
     
 #endif
@@ -670,64 +595,39 @@ VertexAttribute TessellateTriangle(
 }
 
 
-// Hash function for noise generation
-float fhash(vec3 p) {
-    p = fract(p * 0.3183099 + 0.1);
-    p *= 17.0;
-    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
-}
+float hash(float n) { return fract(sin(n) * 1e4); }
+float hash(vec2 p) { return fract(1e4 * sin(17.0 * p.x + p.y * 0.1) * (0.1 + abs(sin(p.y * 13.0 + p.x)))); }
 
-// 3D Noise function
 float fnoise(vec3 x) {
-    vec3 i = floor(x);
-    vec3 f = fract(x);
+	const vec3 step = vec3(110, 241, 171);
 
-    // Eight corners in 3D space
-    float n000 = fhash(i + vec3(0.0, 0.0, 0.0));
-    float n100 = fhash(i + vec3(1.0, 0.0, 0.0));
-    float n010 = fhash(i + vec3(0.0, 1.0, 0.0));
-    float n110 = fhash(i + vec3(1.0, 1.0, 0.0));
-    float n001 = fhash(i + vec3(0.0, 0.0, 1.0));
-    float n101 = fhash(i + vec3(1.0, 0.0, 1.0));
-    float n011 = fhash(i + vec3(0.0, 1.0, 1.0));
-    float n111 = fhash(i + vec3(1.0, 1.0, 1.0));
+	vec3 i = floor(x);
+	vec3 f = fract(x);
 
-    vec3 u = f * f * (3.0 - 2.0 * f);
+	// For performance, compute the base input to a 1D hash from the integer part of the argument and the
+	// incremental change to the 1D based on the 3D -> 1D wrapping
+    float n = dot(i, step);
 
-    return mix(
-        mix(mix(n000, n100, u.x), mix(n010, n110, u.x), u.y),
-        mix(mix(n001, n101, u.x), mix(n011, n111, u.x), u.y),
-        u.z
-    );
+	vec3 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(mix( hash(n + dot(step, vec3(0, 0, 0))), hash(n + dot(step, vec3(1, 0, 0))), u.x),
+                   mix( hash(n + dot(step, vec3(0, 1, 0))), hash(n + dot(step, vec3(1, 1, 0))), u.x), u.y),
+               mix(mix( hash(n + dot(step, vec3(0, 0, 1))), hash(n + dot(step, vec3(1, 0, 1))), u.x),
+                   mix( hash(n + dot(step, vec3(0, 1, 1))), hash(n + dot(step, vec3(1, 1, 1))), u.x), u.y), u.z);
 }
 
-// Fractional Brownian Motion function
+// função do fBm adaptada para a GPU
 float ffbm(vec3 x) {
     float v = 0.0f;
     float amplitude = 0.5f;
-    vec3 shift = vec3(100.0f);
+    float freq = 1.0;
+    float gain = 0.5f;
+    float lacunarity = 1.95f;
     for (int i = 0; i < 5; ++i) {
-        v += amplitude * fnoise(x);
-        x = x * 2.0f + shift;
-        amplitude *= 0.5f;
+        v += amplitude * fnoise(x*freq);
+        freq       *= lacunarity;
+        amplitude *= gain;
     }
     return v;
-}
-
- vec3 heightblend(vec3 tex1, float height1, vec3 tex2, float height2)
-{
-    float heightBlendFactor = 1.f;
-    float height_start = max(height1, height2 - 1) - heightBlendFactor;
-    float level1 = max(height1 - height_start, 0);
-    float level2 = max(height2 - height_start -1, 0);
-    return ((tex1 * level1) + (tex2 * level2)) / (level1 + level2);
-}
-
- vec3 surf(vec3 tex1, float h1, vec3 tex2, float h2)
-{
-    vec3 t1 = tex1;
-    vec3 t2 = tex2;
-    return heightblend(t1, h1, t2, h2);
 }
 
 /*******************************************************************************
@@ -738,7 +638,6 @@ float ffbm(vec3 x) {
 #if FLAG_WIRE
 vec4 ShadeFragment(vec2 texCoord, vec3 worldPos, vec3 vNormal, vec3 distance)
 #else
-//editar para colocar normal aqui
 vec4 ShadeFragment(vec2 texCoord, vec3 worldPos, vec3 vNormal)
 #endif
 {
@@ -752,7 +651,7 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos, vec3 vNormal)
 
 #if FLAG_DISPLACE
 #if 1
-    // slope
+    
     vec3 n = vec3(1.0f);
     if(!ComputeDerivateNormals())
         n = texture(u_SmapSampler, texCoord).rbg * 2.0 - 1.0;
@@ -791,15 +690,17 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos, vec3 vNormal)
     float waterLevel = 0.0;
     float height = worldPos.y;
     vec3 color;
-    float noisePeak = ffbm(worldPos * 1.f / u_NoiseH3);
-    float noiseRock = ffbm(worldPos * 1.f / u_NoiseH2);
-    float noiseSand = ffbm(worldPos * 1.f / u_NoiseH1);
-    float noiseWater = ffbm(worldPos * 1.f / u_NoiseH0);
     vec3 height0 = vec3(u_ColorH0[0],u_ColorH0[1],u_ColorH0[2]);
     vec3 height1 = vec3(u_ColorH1[0],u_ColorH1[1],u_ColorH1[2]);
     vec3 height2 = vec3(u_ColorH2[0],u_ColorH2[1],u_ColorH2[2]);
     vec3 height3 = vec3(u_ColorH3[0],u_ColorH3[1],u_ColorH3[2]);
     vec3 peakColor = height0;
+
+    // Uso do fBm para atribuir cor e definição de mistura de cores para suavizar transições entre alturas
+    float noisePeak = ffbm(worldPos * 1.f / u_NoiseH3);
+    float noiseRock = ffbm(worldPos * 1.f / u_NoiseH2);
+    float noiseSand = ffbm(worldPos * 1.f / u_NoiseH1);
+    float noiseWater = ffbm(worldPos * 1.f / u_NoiseH0);
     vec3 snowColor = mix(height0, height1, noisePeak);
     vec3 rockColor = mix(height1, height2, noiseRock);
     vec3 sandColor = mix(height2, height3, noiseSand);
@@ -820,6 +721,8 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos, vec3 vNormal)
         float t = smoothstep(waterLevel, sandLevel, height);
         color = mix(waterColor, sandColor, t);
     }
+
+    // Atribuição de cor, código original
     vec3 albedo = color;
 
     vec3 camPos = u_CameraMatrix[3].xyz;
@@ -828,6 +731,7 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos, vec3 vNormal)
                                   worldPos.zxy + earthPos,
                                   wi.zxy,
                                   extinction);
+
 #if FLAG_WIRE
     vec3 shading = mix(vec3(1.0), wireColor.xyz, blendFactor);
     return vec4(shading, 0.0);
@@ -835,7 +739,7 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos, vec3 vNormal)
     vec3 shading = (diffuse / 3.14159) * albedo;
 #endif
 
-    return vec4(shading, 0.0);
+    return vec4(shading * 0.5, 1);
 #elif SHADING_NORMALS
 
     return vec4(abs(n), 1.0);

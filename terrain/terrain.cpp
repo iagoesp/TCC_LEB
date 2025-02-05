@@ -71,6 +71,7 @@
 
 // -----------------------------------------------------------------------------
 // Framebuffer Manager
+// Gerencia o framebuffer e suas configurações de anti-aliasing e cor de fundo
 enum { AA_NONE, AA_MSAA2, AA_MSAA4, AA_MSAA8, AA_MSAA16 };
 struct FramebufferManager {
     int w, h, aa;
@@ -84,7 +85,8 @@ struct FramebufferManager {
 
 // -----------------------------------------------------------------------------
 // Camera Manager
-#define INIT_POS dja::vec3(-24000.0f, +1000.5f, 24000.0f)
+// Gerencia a câmera, incluindo projeção, tom de cor e rotação
+#define INIT_POS dja::vec3(000.0f, +30000.5f, 0.0f)
 enum {
     TONEMAP_UNCHARTED2,
     TONEMAP_FILMIC,
@@ -108,7 +110,7 @@ struct CameraManager {
         int triangleCount;
     } sphere;
 } g_camera = {
-    80.f, 1.0f, 64000.f,
+    80.f, 1.0f, 640000.f,
     PROJECTION_RECTILINEAR,
     TONEMAP_ACES,
     INIT_POS,
@@ -172,20 +174,16 @@ int seeds = 42;
 
 
 
-float getValleyFBM = 2.5f;
-int octavesFBM = 16;
-float wavelengthFBM = 0.6f;
-float lacunarityFBM = 1.84f;
-float gainFBM = 0.5f;
+float elevation = 2.5f;
+int octaves = 16;
+float wavelength = 0.6f;
+float lacunarity = 1.84f;
+float gain = 0.5f;
 
-float ridgeOffset = 1.1f;
-float getValleyRMF = 1;
-int octavesRMF = 16;
-float wavelengthRMF = 0.1f;
-float lacunarityRMF = 1.95f;
-float gainRMF = 0.5f;
-// -----------------------------------------------------------------------------
-// Terrain Manager
+
+// ------------------------------
+// GERENCIAMENTO DE TERRENO
+// ------------------------------
 enum { METHOD_CS, METHOD_TS, METHOD_GS, METHOD_MS };
 enum { SHADING_DIFFUSE, SHADING_NORMALS, SHADING_COLOR};
 struct TerrainManager {
@@ -218,7 +216,7 @@ struct TerrainManager {
     SIZE_TERRAIN
 };
 
-//grid_t * grid = create_grid(g_terrain.dmap.width, g_terrain.dmap.height);
+// Criação da grade para o terreno
 grid_t * grid = create_grid(g_terrain.dmap.width, g_terrain.dmap.height);
 
 // -----------------------------------------------------------------------------
@@ -1338,30 +1336,25 @@ void gerarNormal(int smapID, float zf_arr[], std::vector<uint16_t> texels, int w
             int j1 = std::max(0, j - 1);
             int j2 = std::min(h - 1, j + 1);
 
-            // Obter as alturas dos pixels vizinhos
+            // Obtem as alturas dos pixels vizinhos
             uint16_t z_l = texels[i1 + w * j]; // Esquerda
             uint16_t z_r = texels[i2 + w * j]; // Direita
             uint16_t z_b = texels[i + w * j1]; // Baixo
             uint16_t z_t = texels[i + w * j2]; // Cima
 
-            // Converter para altura real
+            // Converte para altura real
             float hL = (float)z_l / 65535.0f * heightScale;
             float hR = (float)z_r / 65535.0f * heightScale;
             float hD = (float)z_b / 65535.0f * heightScale;
             float hU = (float)z_t / 65535.0f * heightScale;
 
-            // Calcular os gradientes
+            // Calcula os gradientes
             float dzdx = (hR - hL) / (2.0f * dx);
             float dzdz = (hU - hD) / (2.0f * dz);
 
-            // Calcular a normal
+            // Calcula a normal
             glm::vec3 normal = glm::normalize(glm::vec3(-dzdx, 1.0f, -dzdz));
 
-            // Mapear de [-1,1] para [0,1] para armazenamento
-            /*smap[    3 * (i + w * j)] = normal.x;
-            smap[1 + 3 * (i + w * j)] = normal.y;
-            smap[2 + 3 * (i + w * j)] = normal.z;
-            */
             smap[    3 * (i + w * j)] = normal.x * 0.5f + 0.5f;
             smap[1 + 3 * (i + w * j)] = normal.y * 0.5f + 0.5f;
             smap[2 + 3 * (i + w * j)] = normal.z * 0.5f + 0.5f;
@@ -1392,58 +1385,41 @@ void gerarNormal(int smapID, float zf_arr[], std::vector<uint16_t> texels, int w
     glActiveTexture(GL_TEXTURE0);
 }
 
-// -----------------------------------------------------------------------------
-/**
- * Load the Displacement Texture
- *
- * This Loads an R16 texture used as a displacement map
- */
+////////////////////////////////////////////////////////////////////////////////
+// Funções para geração de altura e normalização do terreno
+////////////////////////////////////////////////////////////////////////////////
 
-float minRMF = 10000.0f;
-float minFBM = 10000.0f;
-float maxRMF = 0.0f;
-float maxFBM = 0.0f;
-
-float obterValorRuido(glm::vec3 pos){
-    //Declaração das variáveis referentes aos valores de ruído do
-    // ridgedMF e do fBm
-    float noiseFBM = 0.f;
-
-    noiseFBM = glm::abs(Simplex::fBm(wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM)/(float)wavelengthFBM);
-    //LOG("noiseFBM %f\n", noiseFBM);
-    noiseFBM = pow((float)noiseFBM, (float)getValleyFBM);
-    //LOG("valley noiseFBM %f\n", noiseFBM);
-    noiseFBM = (noiseFBM)/(1.0/(float)wavelengthFBM);
-    return noiseFBM;
-    
-}
-
-void gerarAltura(int h, int h1, int w, float tamAmostra, float *zf_arr){
-    //LOG("De %i\n", h);
-     for (int j = h; j < h1; j++){
+// Gerar altura utilizando ruído procedural
+void gerarAltura(int startH, int endH, int w, float tamAmostra, float *zf_arr) {
+    for (int j = startH; j < endH; j++) {
         for (int i = 0; i < w; i++) {
 
-            float h = -2000.5f;
-            //glm::vec2 pos = glm::vec2(float(i*tamAmostra), float(j*tamAmostra));
-            glm::vec3 pos = glm::vec3(float(i*tamAmostra), h, float(j*tamAmostra));
-
-            float noiseFBM = 0.f;
-
-            noiseFBM = glm::abs(Simplex::fBm(wavelengthFBM*pos, octavesFBM, lacunarityFBM, gainFBM)/(float)wavelengthFBM);
-            //LOG("noiseFBM %f\n", noiseFBM);
-            noiseFBM = pow((float)noiseFBM, (float)getValleyFBM);
-            //LOG("valley noiseFBM %f\n", noiseFBM);
-            noiseFBM = (noiseFBM)/(1.0/(float)wavelengthFBM);
+            // Define-se uma altura base
+            float height = -2000.5f;
             
-            h = noiseFBM;
-            
-            //h += calcfBmNoise(pos);
-            //h *= g_terrain.dmap.scale;
-            int trunc = h*1000000;
-            h = float(trunc)/1000000.f;
+            // Cria-se o vetor de posição. Note que "height" entra como y
+            glm::vec3 pos = glm::vec3(
+                (float)(i) * tamAmostra,
+                height,
+                (float)(j) * tamAmostra
+            );
 
-            
-            zf_arr[i + w*j] = h;
+            // Calcula-se o ruído fBm
+            float noiseFBM = glm::abs(
+                Simplex::fBm(wavelength * pos, octaves, lacunarity, gain)
+                / (float)(wavelength)
+            );
+
+            // Aplica elevação do valor (potência) e a nova altura a partir do ruído
+            noiseFBM = pow(noiseFBM, (float)(elevation));
+            noiseFBM *= (float)(wavelength);
+
+            // Trunca em 6 casas decimais
+            int trunc = (int)(noiseFBM * 1000000);
+            noiseFBM = (float)(noiseFBM) / 1000000.0f;
+
+            // Salva no array de alturas
+            zf_arr[i + w * j] = noiseFBM;
         }
     }
 }
@@ -1456,36 +1432,39 @@ bool gerarTextura(int dmapID, int smapID)
 
 
     // Variaveis inseridas para o projeto
-    float max = -1000000000000000000000000000000000000000000000000000000.f;
-    float min = 1000000000000000000000000000000000000000000000000000000.f;
+    float max = -INFINITY;
+    float min = INFINITY;
     float scale = 2.f; // Escala do FBM
 
-/*     int w = g_terrain.dmap.width/10;
-    int h = g_terrain.dmap.height/10; */
-    int size = pow(2,12);
+
+    // Configuração do tamanho da malha do terreno
+    int nThreads = 12;
+    int size = pow(2,nThreads);
     int w = size;
-    int part = size / 12;
+    int part = size / nThreads;                 // Divide em partes para paralelização
     int h = w;
 
     int mipcnt = djgt__mipcnt(w, h, 1);
     std::vector<uint16_t> dmap(w * h * 2);
 
-    //std::string title = "dmap";
     std::vector<uint16_t> texels2(w*h);
     std::vector<float> normals(w*h*2);
-    float *zf_arr = new float [w*h];
+    float *zf_arr = new float [w*h];            // Armazena as alturas
     
-    float tamAmostra = 0.0001*(float)scaleTER;
+    float tamAmostra = 0.0001*(float)scaleTER;  // Define o tamanho da amostra
+    
     //LOG("Loading --------------tamAmostra%f\n", tamAmostra);
     std::vector<glm::vec3> positions(w*h);
-    Simplex::seed(seeds);
-    LOG("Size: %i\n", part);
-    LOG("Tamanho da Malha: %i\n", w);
-    int sz0 = part*0;     
+    Simplex::seed(seeds);                       // Semente do ruído simplex
+/*     LOG("Size: %i\n", part);
+    LOG("Tamanho da Malha: %i\n", w); */
+
+    // Divide a malha em partes para melhorar o desempenho
+    int sz0 = part*0;
     int sz1 = part*1;
     int sz2 = part*2;
     int sz3 = part*3;
-    int sz4 = part*4;     
+    int sz4 = part*4;
     int sz5 = part*5;
     int sz6 = part*6;
     int sz7 = part*7;
@@ -1520,6 +1499,7 @@ bool gerarTextura(int dmapID, int smapID)
     th11.join();
     th12.join();
   
+    //Normaliza os valores
     for (int j = 0; j < h; ++j){
         for (int i = 0; i < w; ++i) {
 
@@ -1531,10 +1511,6 @@ bool gerarTextura(int dmapID, int smapID)
         }
     }
 
-    //Erosion eroder = Erosion();
-    //zf_arr = eroder.erode(zf_arr, w, 200000);
-
-    //LOG("(min2:%f, max2:%f), \n", min2, max2);
     for (int j = 0; j < h; ++j){
         for (int i = 0; i < w; ++i) {  
             float h = (zf_arr[i + w*j]-min)/(max-min);
@@ -2760,8 +2736,6 @@ void RetrieveNodeCount()
  */
 void renderScene()
 {
-    //LOG("%s\n", "renderScene");
-
     renderTerrain();
     RetrieveNodeCount();
     renderSky();
@@ -2785,6 +2759,7 @@ void PrintLargeNumber(const char *label, int32_t value)
     }
 }
 
+// Geração da interface visual
 void renderViewer()
 {
     //LOG("%s\n", "renderViewer");
@@ -2865,8 +2840,8 @@ void renderViewer()
         ImGui::Begin("Performance Analysis");
         {
             double cpuDt, gpuDt;
-
             djgc_ticks(g_gl.clocks[CLOCK_ALL], &cpuDt, &gpuDt);
+            //LOG(":%f", 1.f / gpuDt);
             ImGui::Text("FPS %8.3f(CPU) %8.3f(GPU)", 1.f / cpuDt, 1.f / gpuDt);
             ImGui::NewLine();
             ImGui::Text("Timings:");
@@ -3058,17 +3033,17 @@ void renderViewer()
             if (ImGui::SliderInt("Scale", &scaleTER, 0, 15))
                 LOG("Amostra = %i\n", scaleTER);
             
-            if (ImGui::SliderFloat("Valley", &getValleyFBM, 0.0f, 8.0f, "%0.01f"))
-                LOG("void Int = %f\n", getValleyFBM);  
-            if (ImGui::SliderInt("Octaves", &octavesFBM, 0, 32))
-                LOG("Octaves = %f\n", octavesFBM);
+            if (ImGui::SliderFloat("Valley", &elevation, 0.0f, 8.0f, "%0.01f"))
+                LOG("void Int = %f\n", elevation);  
+            if (ImGui::SliderInt("Octaves", &octaves, 0, 32))
+                LOG("Octaves = %f\n", octaves);
 
-            if (ImGui::SliderFloat("Wavelength", &wavelengthFBM, 0.f, 10.f, "%0.01f"))
-                LOG("Wavelength = %f\n", wavelengthFBM);
-            if (ImGui::SliderFloat("Lacunarity", &lacunarityFBM, 0.f, 16.f, "%0.5f"))
-                LOG("Lacunarity = %f\n", lacunarityFBM);
-            if (ImGui::SliderFloat("Gain", &gainFBM, 0.f, 1.f, "%0.01f"))
-                LOG("Gain = %f\n", gainFBM);
+            if (ImGui::SliderFloat("Wavelength", &wavelength, 0.f, 10.f, "%0.01f"))
+                LOG("Wavelength = %f\n", wavelength);
+            if (ImGui::SliderFloat("Lacunarity", &lacunarity, 0.f, 16.f, "%0.5f"))
+                LOG("Lacunarity = %f\n", lacunarity);
+            if (ImGui::SliderFloat("Gain", &gain, 0.f, 1.f, "%0.01f"))
+                LOG("Gain = %f\n", gain);
             if (ImGui::Checkbox("Derivative Normals", &derivative_normals))
                 LOG("Derivative Normals= %i\n", derivative_normals);
         }
@@ -3084,12 +3059,12 @@ void renderViewer()
                 mountain_inverse = MONTANHA;
                 scaleTER = 10;
 
-                getValleyFBM = 2.5f;
-                octavesFBM = 16;
-                wavelengthFBM = 0.6f;
-                lacunarityFBM = 1.84f;
+                elevation = 2.5f;
+                octaves = 16;
+                wavelength = 0.6f;
+                lacunarity = 1.84f;
 
-                gainFBM = 0.5f;
+                gain = 0.5f;
                 LoadDmapTexture();
             }
 
@@ -3100,11 +3075,11 @@ void renderViewer()
                 mountain_inverse = MONTANHA;
                 scaleTER = 10;
 
-                getValleyFBM = 4.f;
-                octavesFBM = 8;
-                wavelengthFBM = 0.1f;
-                lacunarityFBM = 1.95f;
-                gainFBM = 0.5f;
+                elevation = 4.f;
+                octaves = 8;
+                wavelength = 0.1f;
+                lacunarity = 1.95f;
+                gain = 0.5f;
                 height3 = 5256.0f;
                 height2 = 4791.0f;
                 height1 = 3396.0f;
@@ -3123,11 +3098,11 @@ void renderViewer()
                 mountain_inverse = MONTANHA;
                 scaleTER = 10;
 
-                getValleyFBM = 5.0f;
-                octavesFBM = 4.f;
-                wavelengthFBM = 1.2f;
-                lacunarityFBM = 1.62;
-                gainFBM = 0.5f;
+                elevation = 5.0f;
+                octaves = 4.f;
+                wavelength = 1.2f;
+                lacunarity = 1.62;
+                gain = 0.5f;
                 LoadDmapTexture();
             }
 
@@ -3136,17 +3111,11 @@ void renderViewer()
                 mountain_inverse = MONTANHA;
                 scaleTER = 8;
 
-                octavesFBM = 14;
-                wavelengthFBM = 4.5f;
-                lacunarityFBM = 2.37030;
-                gainFBM = 0.5f;
-                getValleyFBM = 2.5;
-
-                getValleyRMF = 2.0f;
-                octavesRMF = 10;
-                wavelengthRMF = 0.5f;
-                lacunarityRMF = 2.0f;
-                gainRMF = 0.5f;
+                octaves = 14;
+                wavelength = 4.5f;
+                lacunarity = 2.37030;
+                gain = 0.5f;
+                elevation = 2.5;
                 LoadDmapTexture();
             }
 

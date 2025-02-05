@@ -22,7 +22,7 @@ void main()
     const int cbtID = 0;
     uint nodeID = gl_InstanceID;
     cbt_Node node = cbt_DecodeNode(cbtID, nodeID);
-    vec4 triangleVertices[3] = DecodeTriangleVertices(node);
+    vec4 triangleVertices[3] =  DecodeTriangleVertices(node);
     vec2 triangleTexCoords[3] = vec2[3](
         triangleVertices[0].xy,
         triangleVertices[1].xy,
