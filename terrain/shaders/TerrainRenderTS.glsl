@@ -79,7 +79,7 @@ void main()
         );
 
 
-        // set tess levels
+        // Define níveis de tesselação usando LOD2()
   
         gl_TessLevelInner[0] =
         gl_TessLevelOuter[0] =

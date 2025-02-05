@@ -3262,6 +3262,7 @@ keyboardCallback(
         case GLFW_KEY_ESCAPE:
             g_app.viewer.hud = !g_app.viewer.hud;
             break;
+        /*
         case GLFW_KEY_C:
             if (g_app.recorder.on) {
                 g_app.recorder.frame = 0;
@@ -3269,6 +3270,7 @@ keyboardCallback(
             }
             g_app.recorder.on = !g_app.recorder.on;
             break;
+        */
         case GLFW_KEY_R:
             LoadBuffers();
             LoadPrograms();
