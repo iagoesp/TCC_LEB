@@ -53,7 +53,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 #define VIEWER_DEFAULT_WIDTH  1920
-#define VIEWER_DEFAULT_HEIGHT 1080
+#define VIEWER_DEFAULT_HEIGHT 1180
 
 // default path to the directory holding the source files
 #ifndef PATH_TO_SRC_DIRECTORY
@@ -145,6 +145,7 @@ enum {
     RIDGEDFBM,
 };
 
+//Declaração de variáveis para GPU
 static ImVec4 colorig;
 bool derivative_normals = false;
 float color0[3] = {200.f/255.f, 181.f/255.f,152.f/255.f};
@@ -164,16 +165,12 @@ float noiseH2 = 970.f;
 float noiseH1 = 3204.f;
 float noiseH0 = 10000.f;
 
+
+//Variaveis personalizaveis do FBM
 int noise = FBM;
-
 int mountain_inverse = MONTANHA;
-
 int scaleTER = 10;
 int seeds = 42;
-
-
-
-
 float elevation = 2.5f;
 int octaves = 16;
 float wavelength = 0.6f;
@@ -251,7 +248,6 @@ struct AppManager {
 
 // -----------------------------------------------------------------------------
 // OpenGL Manager
-
 enum {
     CLOCK_ALL,
     CLOCK_BATCH,
@@ -374,6 +370,8 @@ enum {
     UNIFORM_TERRAIN_NOISEH2,
     UNIFORM_TERRAIN_NOISEH3,
     UNIFORM_TERRAIN_DERIVATIVENORMALS,
+    UNIFORM_TERRAIN_CAMPOSITION,
+    UNIFORM_TERRAIN_FREEZE,
 
     UNIFORM_SPLIT_DMAP_SAMPLER,
     UNIFORM_SPLIT_SMAP_SAMPLER,
@@ -400,6 +398,8 @@ enum {
     UNIFORM_SPLIT_NOISEH2,
     UNIFORM_SPLIT_NOISEH3,
     UNIFORM_SPLIT_DERIVATIVENORMALS,
+    UNIFORM_SPLIT_CAMPOSITION,
+    UNIFORM_SPLIT_FREEZE,
 
     UNIFORM_MERGE_DMAP_SAMPLER,
     UNIFORM_MERGE_SMAP_SAMPLER,
@@ -426,6 +426,8 @@ enum {
     UNIFORM_MERGE_NOISEH2,
     UNIFORM_MERGE_NOISEH3,
     UNIFORM_MERGE_DERIVATIVENORMALS,
+    UNIFORM_MERGE_CAMPOSITION,
+    UNIFORM_MERGE_FREEZE,
 
     UNIFORM_RENDER_DMAP_SAMPLER,
     UNIFORM_RENDER_SMAP_SAMPLER,
@@ -452,6 +454,8 @@ enum {
     UNIFORM_RENDER_NOISEH2,
     UNIFORM_RENDER_NOISEH3,
     UNIFORM_RENDER_DERIVATIVENORMALS,
+    UNIFORM_RENDER_CAMPOSITION,
+    UNIFORM_RENDER_FREEZE,
 
     UNIFORM_TOPVIEW_DMAP_SAMPLER,
     UNIFORM_TOPVIEW_DMAP_FACTOR,
@@ -631,6 +635,9 @@ void ConfigureTerrainProgram(GLuint glp, GLuint offset)
     glProgramUniform3f(glp, g_gl.uniforms[UNIFORM_TERRAIN_COLORH2 + offset], color_backGround2[0],color_backGround2[1],color_backGround2[2]);
     glProgramUniform3f(glp, g_gl.uniforms[UNIFORM_TERRAIN_COLORH3 + offset], color_backGround3[0],color_backGround3[1],color_backGround3[2]);
     glProgramUniform1i(glp, g_gl.uniforms[UNIFORM_TERRAIN_DERIVATIVENORMALS + offset], derivative_normals);
+    glProgramUniform3f(glp, g_gl.uniforms[UNIFORM_TERRAIN_CAMPOSITION + offset], g_camera.pos.x, g_camera.pos.y, g_camera.pos.z);
+    glProgramUniform1i(glp, g_gl.uniforms[UNIFORM_TERRAIN_FREEZE + offset], g_terrain.flags.freeze);
+
     glProgramUniform1f(glp,
         g_gl.uniforms[UNIFORM_TERRAIN_DMAP_FACTOR + offset],
         g_terrain.dmap.scale);
@@ -790,6 +797,9 @@ bool LoadTerrainProgram(GLuint *glp, const char *flag, GLuint uniformOffset)
         djgp_push_string(djp, "#extension GL_NV_shader_thread_shuffle : require\n");
         djgp_push_string(djp, "#extension GL_NV_gpu_shader5 : require\n");
     }
+    djgp_push_string(djp, "#extension GL_ARB_conservative_depth : enable\n");
+    
+
     switch (g_camera.projection) {
     case PROJECTION_RECTILINEAR:
         djgp_push_string(djp, "#define PROJECTION_RECTILINEAR\n");
@@ -895,6 +905,11 @@ bool LoadTerrainProgram(GLuint *glp, const char *flag, GLuint uniformOffset)
         glGetUniformLocation(*glp, "u_NoiseH3");
     g_gl.uniforms[UNIFORM_TERRAIN_DERIVATIVENORMALS + uniformOffset] =
         glGetUniformLocation(*glp, "u_DerivativeNormals");
+    g_gl.uniforms[UNIFORM_TERRAIN_CAMPOSITION + uniformOffset] =
+        glGetUniformLocation(*glp, "u_CamPosition");
+    g_gl.uniforms[UNIFORM_TERRAIN_FREEZE + uniformOffset] =
+        glGetUniformLocation(*glp, "u_Freeze");
+        
         
        // */
     g_gl.uniforms[UNIFORM_TERRAIN_DMAP_FACTOR + uniformOffset] =
@@ -946,27 +961,8 @@ bool LoadTerrainPrograms()
     return v;
 }
 
-/*
-bool LoadTransformFeedbackProgram()
-{
-    LOG("%s\n", "Transform Feedback");
 
-    djg_program *djp = djgp_create();
-    GLuint *glp = &g_gl.programs[PROGRAM_TRANSFORM_FEEDBACK];
 
-    djgp_push_file(djp, PATH_TO_SRC_DIRECTORY "./terrain/shaders/transform.glsl");
-
-    if (!djgp_to_gl(djp, 450, false, true, glp)) {
-        djgp_release(djp);
-
-        return false;
-    }
-    djgp_release(djp);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BUFFER_TRANSFORM_FEEDBACK, g_gl.buffers[BUFFER_TRANSFORM_FEEDBACK]);
-    glUseProgram(g_gl.programs[PROGRAM_LEB_REDUCTION_PREPASS]);
-    
-    return (glGetError() == GL_NO_ERROR);
-}*/
 
 // -----------------------------------------------------------------------------
 /** Load the Reduction Program
@@ -1320,68 +1316,94 @@ bool LoadSceneFramebufferTexture()
 
 void gerarNormal(int smapID, float zf_arr[], std::vector<uint16_t> texels, int w, int h)
 {
+    // Número de mip levels (caso você queira gerar mipmap depois)
     int mipcnt = djgt__mipcnt(w, h, 1);
 
-    std::vector<float> smap(w * h * 3);
+    // Vetor que guardará as normais em RGB, cada texel = (nx, ny, nz)
+    std::vector<float> normalMap(w * h * 3, 0.5f); // Inicializa tudo com 0.5 (normal neutra)
 
-    float dx = 1.0f / w; // Escala espacial em x
-    float dz = 1.0f / h; // Escala espacial em z
-    float heightScale = 1.0f; // Ajuste conforme necessário
+    // IMPORTANTE: se o seu terreno real está escalado em X/Z por tamAmostra,
+    // você pode aplicar esse tamAmostra abaixo para que a inclinação fique correta
+    // (pois o seu p.x é i * tamAmostra, e p.z é j * tamAmostra).
+    // Vou chamar esse valor de "scaleXZ" para ilustrar:
+    float scaleXZ = 1.0f; // ou tamAmostra, caso queira coerência com o mundo real
 
-    for (int j = 0; j < h; ++j){
-        for (int i = 0; i < w; ++i) {
+    // Loop pelos "pixels" (i, j) de 0..w-2 e 0..h-2 para montar cada quadrado
+    for (int j = 0; j < h - 1; ++j) {
+        for (int i = 0; i < w - 1; ++i) {
+            // Lê a altura normalizada (0..1) de cada vértice
+            // (texels está em RG16, mas aqui você está pegando só o .x principal)
+            float h00 = texels[(i + w*j)] / 65535.0f;
+            float h10 = texels[((i+1) + w*j)] / 65535.0f;
+            float h01 = texels[(i + w*(j+1))] / 65535.0f;
+            float h11 = texels[((i+1) + w*(j+1))] / 65535.0f;
 
-            int i1 = std::max(0, i - 1);
-            int i2 = std::min(w - 1, i + 1);
-            int j1 = std::max(0, j - 1);
-            int j2 = std::min(h - 1, j + 1);
+            // Converte cada vértice para espaço 3D do terreno
+            // Se seu terreno real está em Y pra cima:
+            glm::vec3 p00(i * scaleXZ,     h00, j * scaleXZ);
+            glm::vec3 p10((i+1)*scaleXZ,   h10, j * scaleXZ);
+            glm::vec3 p01(i * scaleXZ,     h01, (j+1)*scaleXZ);
+            glm::vec3 p11((i+1)*scaleXZ,   h11, (j+1)*scaleXZ);
 
-            // Obtem as alturas dos pixels vizinhos
-            uint16_t z_l = texels[i1 + w * j]; // Esquerda
-            uint16_t z_r = texels[i2 + w * j]; // Direita
-            uint16_t z_b = texels[i + w * j1]; // Baixo
-            uint16_t z_t = texels[i + w * j2]; // Cima
+            // Triângulo 1: p00, p10, p01
+            glm::vec3 e1 = p10 - p00;
+            glm::vec3 e2 = p01 - p00;
+            glm::vec3 n1 = glm::cross(e1, e2);
 
-            // Converte para altura real
-            float hL = (float)z_l / 65535.0f * heightScale;
-            float hR = (float)z_r / 65535.0f * heightScale;
-            float hD = (float)z_b / 65535.0f * heightScale;
-            float hU = (float)z_t / 65535.0f * heightScale;
+            // Triângulo 2: p11, p10, p01
+            glm::vec3 e3 = p10 - p11;
+            glm::vec3 e4 = p01 - p11;
+            glm::vec3 n2 = glm::cross(e3, e4);
 
-            // Calcula os gradientes
-            float dzdx = (hR - hL) / (2.0f * dx);
-            float dzdz = (hU - hD) / (2.0f * dz);
+            // Faz a média das duas normais e normaliza
+            glm::vec3 n = glm::normalize(n1 + n2);
 
-            // Calcula a normal
-            glm::vec3 normal = glm::normalize(glm::vec3(-dzdx, 1.0f, -dzdz));
+            // Agora converte n de [-1,1] para [0,1]:
+            float nx = 0.5f + 0.5f * n.x;
+            float ny = 0.5f + 0.5f * n.y;
+            float nz = 0.5f + 0.5f * n.z;
 
-            smap[    3 * (i + w * j)] = normal.x * 0.5f + 0.5f;
-            smap[1 + 3 * (i + w * j)] = normal.y * 0.5f + 0.5f;
-            smap[2 + 3 * (i + w * j)] = normal.z * 0.5f + 0.5f;
-            
+            // Salva em normalMap.
+            // Cada texel (i,j) corresponde a normalMap[3*(i + w*j) + 0..2]
+            normalMap[3*(i + w*j) + 0] = nx;
+            normalMap[3*(i + w*j) + 1] = ny;
+            normalMap[3*(i + w*j) + 2] = nz;
         }
     }
 
-    // Criar e carregar a textura de normal
+    // Para a borda (última linha e última coluna), você pode repetir a normal do vizinho
+    // para evitar lixo.
+    for (int j2 = 0; j2 < h; j2++){
+        normalMap[3*((w-1) + w*j2) + 0] = normalMap[3*((w-2) + w*j2) + 0];
+        normalMap[3*((w-1) + w*j2) + 1] = normalMap[3*((w-2) + w*j2) + 1];
+        normalMap[3*((w-1) + w*j2) + 2] = normalMap[3*((w-2) + w*j2) + 2];
+    }
+    for (int i2 = 0; i2 < w; i2++){
+        normalMap[3*(i2 + w*(h-1)) + 0] = normalMap[3*(i2 + w*(h-2)) + 0];
+        normalMap[3*(i2 + w*(h-1)) + 1] = normalMap[3*(i2 + w*(h-2)) + 1];
+        normalMap[3*(i2 + w*(h-1)) + 2] = normalMap[3*(i2 + w*(h-2)) + 2];
+    }
+
+    // Submete a normalMap para a GPU como estava no seu código original:
     if (glIsTexture(g_gl.textures[smapID]))
         glDeleteTextures(1, &g_gl.textures[smapID]);
 
     glGenTextures(1, &g_gl.textures[smapID]);
     glActiveTexture(GL_TEXTURE0 + smapID);
     glBindTexture(GL_TEXTURE_2D, g_gl.textures[smapID]);
-    glTexStorage2D(GL_TEXTURE_2D, mipcnt, GL_RGB32F, w, h);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_FLOAT, &smap[0]);
 
+    glTexStorage2D(GL_TEXTURE_2D, mipcnt, GL_RGB16F, w, h);
+    glTexSubImage2D(
+        GL_TEXTURE_2D, 0, 0, 0, w, h, 
+        GL_RGB, GL_FLOAT, normalMap.data()
+    );
     glGenerateMipmap(GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D,
-        GL_TEXTURE_MIN_FILTER,
-        GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D,
-        GL_TEXTURE_WRAP_S,
-        GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D,
-        GL_TEXTURE_WRAP_T,
-        GL_CLAMP_TO_EDGE);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
+
     glActiveTexture(GL_TEXTURE0);
 }
 

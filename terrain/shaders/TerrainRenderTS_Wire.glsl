@@ -76,12 +76,19 @@ void main()
             vec4(triangleVertices[0].xy, triangleVertices[1].xy)
         );
 
-        // set tess levels
-        gl_TessLevelInner[0] = 
-        gl_TessLevelOuter[0] = 
-        gl_TessLevelOuter[1] =
-        gl_TessLevelOuter[2] = LOD2((triangleVertices[0].xyz + triangleVertices[1].xyz + triangleVertices[2].xyz)/3.f);
+        // Calcula o ponto médio de cada borda do triângulo
+        vec3 edgeMid0 = (triangleVertices[0].xyz + triangleVertices[1].xyz) / 2.0;
+        vec3 edgeMid1 = (triangleVertices[1].xyz + triangleVertices[2].xyz) / 2.0;
+        vec3 edgeMid2 = (triangleVertices[2].xyz + triangleVertices[0].xyz) / 2.0;
 
+        // Usa os pontos médios das bordas para os outer levels
+        gl_TessLevelOuter[0] = LOD2(edgeMid0); // Borda entre vértices 0 e 1
+        gl_TessLevelOuter[1] = LOD2(edgeMid1); // Borda entre vértices 1 e 2
+        gl_TessLevelOuter[2] = LOD2(edgeMid2); // Borda entre vértices 2 e 0
+
+        // Inner level continua usando o centro do triângulo
+        vec3 center = (triangleVertices[0].xyz + triangleVertices[1].xyz + triangleVertices[2].xyz) / 3.0;
+        gl_TessLevelInner[0] = LOD2(center);
         
     } else {
         gl_TessLevelInner[0] =

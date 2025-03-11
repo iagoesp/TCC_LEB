@@ -13,6 +13,9 @@ uniform PerFrameVariables {
     vec4 u_FrustumPlanes[6];
 };
 
+uniform vec3 u_CamPosition;
+uniform bool u_Freeze;
+
 // Variáveis para configurar as alturas do terreno
 uniform float u_Height0;
 uniform float u_Height1;
@@ -50,17 +53,6 @@ uniform float u_MinLodVariance;
  * DecodeTriangleVertices -- Decodes the triangle vertices in local space
  *
  */
-const mat3 m3  = mat3( 0.00,  0.80,  0.60,
-                      -0.80,  0.36, -0.48,
-                      -0.60, -0.48,  0.64 );
-const mat3 m3i = mat3( 0.00, -0.80, -0.60,
-                       0.80,  0.36, -0.48,
-                       0.60, -0.48,  0.64 );
-
-bool ComputeDerivateNormals(){
-    return bool(u_DerivativeNormals);
-}
-
 vec4[3] DecodeTriangleVertices(in const cbt_Node node)
 {
     vec3 xPos = vec3(0, 0, 1), yPos = vec3(1, 0, 0);
@@ -127,6 +119,7 @@ float TriangleLevelOfDetail_Perspective(in const vec4[3] patchVertices)
     so we precompute:
     u_LodFactor = 2 * log2(ImagePlanePixelResolution / (ImagePlaneViewSize * TargetPixelLength))
 */
+
 float TriangleLevelOfDetail_Orthographic(in const vec4[3] patchVertices)
 {
     vec3 v0 = (u_ModelViewMatrix * patchVertices[0]).xyz;
@@ -146,6 +139,7 @@ vec3 StereographicProjection(vec3 x) {
 
     return StereographicProjection(x, center);
 }
+
 vec3 ViewSpaceToScreenSpace(vec3 x)
 {
     // project onto unit sphere
@@ -233,8 +227,8 @@ bool DisplacementVarianceTest(in const vec4[3] patchVertices)
  */
 bool FrustumCullingTest(in const vec4[3] patchVertices)
 {
-    vec3 bmin = min(min(patchVertices[0].xyz, patchVertices[1].xyz), patchVertices[2].xyz);
-    vec3 bmax = max(max(patchVertices[0].xyz, patchVertices[1].xyz), patchVertices[2].xyz);
+    vec3 bmin = min(min(patchVertices[0].xyz, patchVertices[1].xyz), patchVertices[2].xyz) - vec3(0.01);
+    vec3 bmax = max(max(patchVertices[0].xyz, patchVertices[1].xyz), patchVertices[2].xyz) + vec3(0.01);
 
     return FrustumCullingTest(u_FrustumPlanes, bmin, bmax);
 }
@@ -282,15 +276,16 @@ vec4 BarycentricInterpolation(in vec4 v[3], in vec2 u)
 }
 
 float LOD2(vec3 posV){
-    if(false)
-        return TERRAIN_PATCH_TESS_FACTOR;
-    else{
-        vec3 cam = vec3(inverse(u_ViewProjectionMatrix)[3].xyz);
-        float dist = distance(posV, cam);
-        return pow(3.f,max(1,log(log(dist)))); 
-    }
+    const float BASE_SIZE = 100.0;   // Tamanho base do patch
+    const float MAX_LOD = 7.0;     // log2(32) máximo
+    
+    vec4 wPos = u_ModelMatrix * vec4(posV, 1.0);
+    float dist = distance(wPos.xyz, u_CamPosition);
+    
+    return exp2(int(floor(MAX_LOD - floor(log2(max(dist, BASE_SIZE)/BASE_SIZE)) + 0.5)));
 }
 
+//do Simplex.h, com adaptações
 int perm[512] = {151,160,137,91,90,15,
 		131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
 		190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
@@ -376,8 +371,6 @@ int perm[512] = {151,160,137,91,90,15,
 		gz = grad3lut[h][2];
 		return;
 	}
-	
-
 
 /* Skewing factors for 2D simplex grid:
  * F2 = 0.5*(sqrt(3.0)-1.0)
@@ -397,6 +390,7 @@ int perm[512] = {151,160,137,91,90,15,
 
 #define FASTFLOOR(x) ( ((x)>0) ? (int(x)) : ((int(x))-1) )
 
+// Simplex.h
 vec4 DerivateNoise(vec3 v)
 {
 	float n0, n1, n2, n3; /* Noise contributions from the four simplex corners */
@@ -596,8 +590,10 @@ VertexAttribute TessellateTriangle(
 
 
 float hash(float n) { return fract(sin(n) * 1e4); }
+float hash1(float n) { return fract(sin(n) * 1e4); }
 float hash(vec2 p) { return fract(1e4 * sin(17.0 * p.x + p.y * 0.1) * (0.1 + abs(sin(p.y * 13.0 + p.x)))); }
 
+// de Ricardo
 float fnoise(vec3 x) {
 	const vec3 step = vec3(110, 241, 171);
 
@@ -630,6 +626,141 @@ float ffbm(vec3 x) {
     return v;
 }
 
+float hash3(vec3 p) {
+    return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
+}
+
+vec4 noiseDS(vec3 x) {
+    vec3 p = floor(x);
+    vec3 w = fract(x);
+    
+    // Quintic interpolation
+    vec3 u = w*w*w*(w*(w*6.0-15.0)+10.0);
+    vec3 du = 30.0*w*w*(w*(w-2.0)+1.0);
+
+    // Random hash values at cube corners
+    float b = hash3(p+vec3(1,0,0));
+    float c = hash3(p+vec3(0,1,0));
+    float d = hash3(p+vec3(1,1,0));
+    float e = hash3(p+vec3(0,0,1));
+    float f = hash3(p+vec3(1,0,1));
+    float g = hash3(p+vec3(0,1,1));
+    float h = hash3(p+vec3(1,1,1));
+	float aa = hash3(p+vec3(0,0,0));
+	
+    // Coefficients calculation
+    float k0 = aa;
+    float k1 = b - aa;
+    float k2 = c - aa;
+    float k3 = e - aa;
+    float k4 = aa - b - c + d;
+    float k5 = aa - c - e + g;
+    float k6 = aa - b - e + f;
+    float k7 = -aa + b + c - d + e - f - g + h;
+
+    return vec4(
+        k0 + k1*u.x + k2*u.y + k3*u.z + k4*u.x*u.y + k5*u.y*u.z + k6*u.z*u.x + k7*u.x*u.y*u.z,
+        du * vec3(
+            k1 + k4*u.y + k6*u.z + k7*u.y*u.z,
+            k2 + k5*u.z + k4*u.x + k7*u.z*u.x,
+            k3 + k6*u.x + k5*u.y + k7*u.x*u.y
+        )
+    );
+}
+
+vec4 fbmDS(vec3 x, int octaves, float lacunarity, float gain) {
+    float amplitude = 1.0;
+    float frequency = 1.0;
+    vec4 total = vec4(0.0);
+    mat3 rot = mat3(0.8,-0.6,0.0,
+                    0.6,0.8,0.0,
+                    0.0,0.0,1.0);
+    
+    for(int i = 0; i < octaves; i++) {
+        vec4 n = noiseDS(x * frequency);
+        total += vec4(n.xyz * amplitude, amplitude);
+        
+        // Accumulate derivatives with proper rotation
+        total.xyz += n.yzw * amplitude * frequency;
+        
+        amplitude *= gain;
+        frequency *= lacunarity;
+        x = rot * x; // Rotate domain for better noise variation
+    }
+    return total;
+}
+
+vec4 noised(vec3 x )
+{
+    vec3 p = floor(x);
+    vec3 w = fract(x);
+    #if 1
+    vec3 u = w*w*w*(w*(w*6.0-15.0)+10.0);
+    vec3 du = 30.0*w*w*(w*(w-2.0)+1.0);
+    #else
+    vec3 u = w*w*(3.0-2.0*w);
+    vec3 du = 6.0*w*(1.0-w);
+    #endif
+
+    float n = p.x + 317.0*p.y + 157.0*p.z;
+    
+    float aa = hash1(n+0.0);
+    float b = hash1(n+1.0);
+    float c = hash1(n+317.0);
+    float d = hash1(n+318.0);
+    float e = hash1(n+157.0);
+	float f = hash1(n+158.0);
+    float g = hash1(n+474.0);
+    float h = hash1(n+475.0);
+
+    float k0 =   aa;
+    float k1 =   b - aa;
+    float k2 =   c - aa;
+    float k3 =   e - aa;
+    float k4 =   aa - b - c + d;
+    float k5 =   aa - c - e + g;
+    float k6 =   aa - b - e + f;
+    float k7 = - aa + b + c - d + e - f - g + h;
+
+    return vec4( -1.0+2.0*(k0 + k1*u.x + k2*u.y + k3*u.z + k4*u.x*u.y + k5*u.y*u.z + k6*u.z*u.x + k7*u.x*u.y*u.z), 
+                      2.0* du * vec3( k1 + k4*u.y + k6*u.z + k7*u.y*u.z,
+                                      k2 + k5*u.z + k4*u.x + k7*u.z*u.x,
+                                      k3 + k6*u.x + k5*u.y + k7*u.x*u.y ) );
+}
+
+const mat3 m3  = mat3( 0.00,  0.80,  0.60,
+                      -0.80,  0.36, -0.48,
+                      -0.60, -0.48,  0.64 );
+const mat3 m3i = mat3( 0.00, -0.80, -0.60,
+                       0.80,  0.36, -0.48,
+                       0.60, -0.48,  0.64 );
+
+bool ComputeDerivateNormals(){
+    return bool(u_DerivativeNormals);
+}
+
+vec4 fbmd_7( vec3 x, int octaves )
+{
+    float f = 1.92;
+    float s = 0.5;
+    float aa = 0.0;
+    float b = 0.5;
+    vec3  d = vec3(0.0);
+    mat3  m = mat3(1.0,0.0,0.0,
+                   0.0,1.0,0.0,
+                   0.0,0.0,1.0);
+    for( int i=0; i<octaves; i++ )
+    {
+        vec4 n = noised(x);
+        aa += b*n.x;          // accumulate values		
+        d += b*m*n.yzw;      // accumulate derivatives
+        b *= s;
+        x = f*m3*x;
+        m = f*m3i*m;
+    }
+	return vec4( aa, d );
+}
+
 /*******************************************************************************
  * ShadeFragment -- Fragement shading routine
  *
@@ -650,26 +781,24 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos, vec3 vNormal)
 #endif
 
 #if FLAG_DISPLACE
-#if 1
-    
-    vec3 n = vec3(1.0f);
-    if(!ComputeDerivateNormals())
-        n = texture(u_SmapSampler, texCoord).rbg * 2.0 - 1.0;
-    else
+    vec3 n;
+    if(ComputeDerivateNormals()){
         n = vNormal;
-#else // compute the slope from the dmap directly
-    float filterSize = 1.0f / float(textureSize(u_DmapSampler, 0).x);// sqrt(dot(dFdx(texCoord), dFdy(texCoord)));
-    float sx0 = textureLod(u_DmapSampler, texCoord - vec2(filterSize, 0.0), 0.0).r;
-    float sx1 = textureLod(u_DmapSampler, texCoord + vec2(filterSize, 0.0), 0.0).r;
-    float sy0 = textureLod(u_DmapSampler, texCoord - vec2(0.0, filterSize), 0.0).r;
-    float sy1 = textureLod(u_DmapSampler, texCoord + vec2(0.0, filterSize), 0.0).r;
-    float sx = sx1 - sx0;
-    float sy = sy1 - sy0;
+    }
+    // compute the slope from the dmap directly
+    else{
+        float filterSize = 1.0f / float(textureSize(u_DmapSampler, 0).x);
+        float sx0 = textureLod(u_DmapSampler, texCoord - vec2(filterSize, 0.0), 0.0).r;
+        float sx1 = textureLod(u_DmapSampler, texCoord + vec2(filterSize, 0.0), 0.0).r;
+        float sy0 = textureLod(u_DmapSampler, texCoord - vec2(0.0, filterSize), 0.0).r;
+        float sy1 = textureLod(u_DmapSampler, texCoord + vec2(0.0, filterSize), 0.0).r;
+        float sx = sx1 - sx0;
+        float sy = sy1 - sy0;
 
-    vec3 n = normalize(vec3(u_DmapFactor * 0.03 / filterSize * 0.5f * vec2(-sx, -sy), 1));
-#endif
+        n = normalize(vec3(u_DmapFactor * 0.03 / filterSize * 0.5f * vec2(-sx, -sy), 1));
+    }
 #else
-    vec3 n = vec3(0, 0, 1);
+    n = vec3(0, 0, 1);
 #endif
 
 #if SHADING_SNOWY
@@ -739,13 +868,12 @@ vec4 ShadeFragment(vec2 texCoord, vec3 worldPos, vec3 vNormal)
     vec3 shading = (diffuse / 3.14159) * albedo;
 #endif
 
-    return vec4(shading * 0.5, 1);
+    return vec4(shading * extinction, 1);
 #elif SHADING_NORMALS
 
-    return vec4(abs(n), 1.0);
+    return vec4(n*0.5 + 0.5, 1.0);
 #elif SHADING_COLOR
-    float x = 100;
-    return vec4(vec3(worldPos.y)/2500, 1);
+    return vec4(vec3(distance(worldPos, u_CamPosition))/10000.f, 1);
 #else
     return vec4(1, 0, 0, 1);
 #endif

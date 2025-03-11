@@ -118,10 +118,3 @@ Em seguida, execute o comando abaixo para baixar os submódulos e dependências:
 ### Recarrega os shaders
 
 * R
-
-* * *
-
-📜 Licença
-----------
-
-Este projeto está sob a licença **MIT**.

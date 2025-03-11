@@ -38,10 +38,6 @@ void main()
     // and extract triangle vertices
     cbt_Node node = cbt_DecodeNode(cbtID, gl_PrimitiveID);
     vec4 triangleVertices[3] = DecodeTriangleVertices(node);
-/* 
-    vec3 edgeP1P0 = (triangleVertices[1] - triangleVertices[0]).xyz;
-    vec3 edgeP2P0 = (triangleVertices[2] - triangleVertices[0]).xyz;
-    vec3 normal = dot(edgeP2P0, edgeP1P0); */
         
     // compute target LoD
     vec2 targetLod = LevelOfDetail(triangleVertices);
@@ -78,14 +74,28 @@ void main()
             triangleVertices[2].xy
         );
 
+        if(!u_Freeze){
+            // Calcula o ponto médio de cada borda do triângulo
+            vec3 edgeMid0 = (triangleVertices[0].xyz + triangleVertices[1].xyz) / 2.0;
+            vec3 edgeMid1 = (triangleVertices[1].xyz + triangleVertices[2].xyz) / 2.0;
+            vec3 edgeMid2 = (triangleVertices[2].xyz + triangleVertices[0].xyz) / 2.0;
 
-        // Define níveis de tesselação usando LOD2()
-  
-        gl_TessLevelInner[0] =
-        gl_TessLevelOuter[0] =
-        gl_TessLevelOuter[1] =
-        gl_TessLevelOuter[2] = LOD2((triangleVertices[0].xyz + triangleVertices[1].xyz + triangleVertices[2].xyz)/3.f);
-   
+            // Usa os pontos médios das bordas para os outer levels e define níveis de tesselação usando LOD2()
+            gl_TessLevelOuter[0] = LOD2(edgeMid0); // Borda entre vértices 0 e 1
+            gl_TessLevelOuter[1] = LOD2(edgeMid1); // Borda entre vértices 1 e 2
+            gl_TessLevelOuter[2] = LOD2(edgeMid2); // Borda entre vértices 2 e 0
+
+            // Para o Inner, usa o centro do triângulo
+            vec3 center = (triangleVertices[0].xyz + triangleVertices[1].xyz + triangleVertices[2].xyz) / 3.0;
+            gl_TessLevelInner[0] = LOD2(center);
+        }
+        else{
+            gl_TessLevelInner[0] =
+            gl_TessLevelOuter[0] =
+            gl_TessLevelOuter[1] =
+            gl_TessLevelOuter[2] = TERRAIN_PATCH_TESS_FACTOR;
+        }
+
     }
     else {
         gl_TessLevelInner[0] =
@@ -121,14 +131,15 @@ void main()
         gl_TessCoord.xy
     );
 
-    // set varyings
     gl_Position = u_ModelViewProjectionMatrix * attrib.position;
     o_TexCoord  = attrib.texCoord;
-    
     o_WorldPos  = (u_ModelMatrix * attrib.position).xyz;
     o_Normal = vec3(1.0);
-    if(ComputeDerivateNormals())
-        o_Normal = abs(DerivativeFBM(o_WorldPos.xyz, 16, 1.95f, 0.5f).yzw);
+
+    if(ComputeDerivateNormals()){
+        o_Normal = fbmd_7(attrib.position.xyz, 7).yzw;
+        o_Normal = normalize(o_Normal);
+    }
 }
 #endif
 
