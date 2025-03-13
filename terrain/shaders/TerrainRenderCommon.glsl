@@ -276,8 +276,8 @@ vec4 BarycentricInterpolation(in vec4 v[3], in vec2 u)
 }
 
 float LOD2(vec3 posV){
-    const float BASE_SIZE = 100.0;   // Tamanho base do patch
-    const float MAX_LOD = 7.0;     // log2(32) máximo
+    const float BASE_SIZE = 200.0;   // Distância até um ponto do terreno
+    const float MAX_LOD = 7.0;       // Nível máximo de detalhamento 2^MAX_LOD
     
     vec4 wPos = u_ModelMatrix * vec4(posV, 1.0);
     float dist = distance(wPos.xyz, u_CamPosition);
