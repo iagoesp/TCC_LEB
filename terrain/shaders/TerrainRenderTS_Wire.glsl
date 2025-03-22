@@ -75,7 +75,7 @@ void main()
             u_ModelViewProjectionMatrix * vec4(triangleVertices[2].xy, 0.0f, 1.0f),
             vec4(triangleVertices[0].xy, triangleVertices[1].xy)
         );
-
+        
         // Calcula o ponto médio de cada borda do triângulo
         vec3 edgeMid0 = (triangleVertices[0].xyz + triangleVertices[1].xyz) / 2.0;
         vec3 edgeMid1 = (triangleVertices[1].xyz + triangleVertices[2].xyz) / 2.0;

@@ -667,6 +667,12 @@ vec4 noiseDS(vec3 x) {
         )
     );
 }
+const mat3 m3  = mat3( 0.00,  0.80,  0.60,
+                      -0.80,  0.36, -0.48,
+                      -0.60, -0.48,  0.64 );
+const mat3 m3i = mat3( 0.00, -0.80, -0.60,
+                       0.80,  0.36, -0.48,
+                       0.60, -0.48,  0.64 );
 
 vec4 fbmDS(vec3 x, int octaves, float lacunarity, float gain) {
     float amplitude = 1.0;
@@ -728,18 +734,14 @@ vec4 noised(vec3 x )
                                       k3 + k6*u.x + k5*u.y + k7*u.x*u.y ) );
 }
 
-const mat3 m3  = mat3( 0.00,  0.80,  0.60,
-                      -0.80,  0.36, -0.48,
-                      -0.60, -0.48,  0.64 );
-const mat3 m3i = mat3( 0.00, -0.80, -0.60,
-                       0.80,  0.36, -0.48,
-                       0.60, -0.48,  0.64 );
+
+
 
 bool ComputeDerivateNormals(){
     return bool(u_DerivativeNormals);
 }
 
-vec4 fbmd_7( vec3 x, int octaves )
+vec4 fbmd_inigo( vec3 x, int octaves )
 {
     float f = 1.92;
     float s = 0.5;

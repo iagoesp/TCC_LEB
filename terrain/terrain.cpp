@@ -1313,97 +1313,55 @@ bool LoadSceneFramebufferTexture()
  *
  * This Loads an RG32F texture used as a slope map
  */
-
-void gerarNormal(int smapID, float zf_arr[], std::vector<uint16_t> texels, int w, int h)
+void gerarNormal(int smapID, std::vector<uint16_t> texels, int w, int h)
 {
-    // Número de mip levels (caso você queira gerar mipmap depois)
     int mipcnt = djgt__mipcnt(w, h, 1);
 
-    // Vetor que guardará as normais em RGB, cada texel = (nx, ny, nz)
-    std::vector<float> normalMap(w * h * 3, 0.5f); // Inicializa tudo com 0.5 (normal neutra)
+    std::vector<float> smap(w * h * 2);
 
-    // IMPORTANTE: se o seu terreno real está escalado em X/Z por tamAmostra,
-    // você pode aplicar esse tamAmostra abaixo para que a inclinação fique correta
-    // (pois o seu p.x é i * tamAmostra, e p.z é j * tamAmostra).
-    // Vou chamar esse valor de "scaleXZ" para ilustrar:
-    float scaleXZ = 1.0f; // ou tamAmostra, caso queira coerência com o mundo real
+    for (int j = 0; j < h; ++j){
+        for (int i = 0; i < w; ++i) {
+            
+            int i1 = std::max(0, i - 1);
+            int i2 = std::min(w - 1, i + 1);
+            int j1 = std::max(0, j - 1);
+            int j2 = std::min(h - 1, j + 1);
+            
+            uint16_t px_l = texels[i1 + w * j]; // in [0,2^16-1]
+            uint16_t px_r = texels[i2 + w * j]; // in [0,2^16-1]
+            uint16_t px_b = texels[i + w * j1]; // in [0,2^16-1]
+            uint16_t px_t = texels[i + w * j2]; // in [0,2^16-1]
+            float z_l = (float)px_l / 65535.0f; // in [0, 1]
+            float z_r = (float)px_r / 65535.0f; // in [0, 1]
+            float z_b = (float)px_b / 65535.0f; // in [0, 1]
+            float z_t = (float)px_t / 65535.0f; // in [0, 1]
+            float slope_x = (float)w * 0.5f * (z_r - z_l);
+            float slope_y = (float)h * 0.5f * (z_t - z_b); 
 
-    // Loop pelos "pixels" (i, j) de 0..w-2 e 0..h-2 para montar cada quadrado
-    for (int j = 0; j < h - 1; ++j) {
-        for (int i = 0; i < w - 1; ++i) {
-            // Lê a altura normalizada (0..1) de cada vértice
-            // (texels está em RG16, mas aqui você está pegando só o .x principal)
-            float h00 = texels[(i + w*j)] / 65535.0f;
-            float h10 = texels[((i+1) + w*j)] / 65535.0f;
-            float h01 = texels[(i + w*(j+1))] / 65535.0f;
-            float h11 = texels[((i+1) + w*(j+1))] / 65535.0f;
+            smap[    2 * (i + w * j)] = slope_x;
+            smap[1 + 2 * (i + w * j)] = slope_y;
+        }  
+    } 
 
-            // Converte cada vértice para espaço 3D do terreno
-            // Se seu terreno real está em Y pra cima:
-            glm::vec3 p00(i * scaleXZ,     h00, j * scaleXZ);
-            glm::vec3 p10((i+1)*scaleXZ,   h10, j * scaleXZ);
-            glm::vec3 p01(i * scaleXZ,     h01, (j+1)*scaleXZ);
-            glm::vec3 p11((i+1)*scaleXZ,   h11, (j+1)*scaleXZ);
-
-            // Triângulo 1: p00, p10, p01
-            glm::vec3 e1 = p10 - p00;
-            glm::vec3 e2 = p01 - p00;
-            glm::vec3 n1 = glm::cross(e1, e2);
-
-            // Triângulo 2: p11, p10, p01
-            glm::vec3 e3 = p10 - p11;
-            glm::vec3 e4 = p01 - p11;
-            glm::vec3 n2 = glm::cross(e3, e4);
-
-            // Faz a média das duas normais e normaliza
-            glm::vec3 n = glm::normalize(n1 + n2);
-
-            // Agora converte n de [-1,1] para [0,1]:
-            float nx = 0.5f + 0.5f * n.x;
-            float ny = 0.5f + 0.5f * n.y;
-            float nz = 0.5f + 0.5f * n.z;
-
-            // Salva em normalMap.
-            // Cada texel (i,j) corresponde a normalMap[3*(i + w*j) + 0..2]
-            normalMap[3*(i + w*j) + 0] = nx;
-            normalMap[3*(i + w*j) + 1] = ny;
-            normalMap[3*(i + w*j) + 2] = nz;
-        }
-    }
-
-    // Para a borda (última linha e última coluna), você pode repetir a normal do vizinho
-    // para evitar lixo.
-    for (int j2 = 0; j2 < h; j2++){
-        normalMap[3*((w-1) + w*j2) + 0] = normalMap[3*((w-2) + w*j2) + 0];
-        normalMap[3*((w-1) + w*j2) + 1] = normalMap[3*((w-2) + w*j2) + 1];
-        normalMap[3*((w-1) + w*j2) + 2] = normalMap[3*((w-2) + w*j2) + 2];
-    }
-    for (int i2 = 0; i2 < w; i2++){
-        normalMap[3*(i2 + w*(h-1)) + 0] = normalMap[3*(i2 + w*(h-2)) + 0];
-        normalMap[3*(i2 + w*(h-1)) + 1] = normalMap[3*(i2 + w*(h-2)) + 1];
-        normalMap[3*(i2 + w*(h-1)) + 2] = normalMap[3*(i2 + w*(h-2)) + 2];
-    }
-
-    // Submete a normalMap para a GPU como estava no seu código original:
     if (glIsTexture(g_gl.textures[smapID]))
         glDeleteTextures(1, &g_gl.textures[smapID]);
 
     glGenTextures(1, &g_gl.textures[smapID]);
     glActiveTexture(GL_TEXTURE0 + smapID);
     glBindTexture(GL_TEXTURE_2D, g_gl.textures[smapID]);
+    glTexStorage2D(GL_TEXTURE_2D, mipcnt, GL_RG32F, w, h);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RG, GL_FLOAT, &smap[0]);
 
-    glTexStorage2D(GL_TEXTURE_2D, mipcnt, GL_RGB16F, w, h);
-    glTexSubImage2D(
-        GL_TEXTURE_2D, 0, 0, 0, w, h, 
-        GL_RGB, GL_FLOAT, normalMap.data()
-    );
     glGenerateMipmap(GL_TEXTURE_2D);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-
+    glTexParameteri(GL_TEXTURE_2D,
+        GL_TEXTURE_MIN_FILTER,
+        GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,
+        GL_TEXTURE_WRAP_S,
+        GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D,
+        GL_TEXTURE_WRAP_T,
+        GL_CLAMP_TO_EDGE);
     glActiveTexture(GL_TEXTURE0);
 }
 
@@ -1555,7 +1513,7 @@ bool gerarTextura(int dmapID, int smapID)
     double nowNormal = glfwGetTime();
 
     // Load nmap from dmap
-    gerarNormal(smapID, zf_arr, texels2, w,h);
+    gerarNormal(smapID, texels2, w,h);
     
 
     glActiveTexture(GL_TEXTURE0 + dmapID);
