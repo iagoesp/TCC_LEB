@@ -630,71 +630,12 @@ float hash3(vec3 p) {
     return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
 }
 
-vec4 noiseDS(vec3 x) {
-    vec3 p = floor(x);
-    vec3 w = fract(x);
-    
-    // Quintic interpolation
-    vec3 u = w*w*w*(w*(w*6.0-15.0)+10.0);
-    vec3 du = 30.0*w*w*(w*(w-2.0)+1.0);
-
-    // Random hash values at cube corners
-    float b = hash3(p+vec3(1,0,0));
-    float c = hash3(p+vec3(0,1,0));
-    float d = hash3(p+vec3(1,1,0));
-    float e = hash3(p+vec3(0,0,1));
-    float f = hash3(p+vec3(1,0,1));
-    float g = hash3(p+vec3(0,1,1));
-    float h = hash3(p+vec3(1,1,1));
-	float aa = hash3(p+vec3(0,0,0));
-	
-    // Coefficients calculation
-    float k0 = aa;
-    float k1 = b - aa;
-    float k2 = c - aa;
-    float k3 = e - aa;
-    float k4 = aa - b - c + d;
-    float k5 = aa - c - e + g;
-    float k6 = aa - b - e + f;
-    float k7 = -aa + b + c - d + e - f - g + h;
-
-    return vec4(
-        k0 + k1*u.x + k2*u.y + k3*u.z + k4*u.x*u.y + k5*u.y*u.z + k6*u.z*u.x + k7*u.x*u.y*u.z,
-        du * vec3(
-            k1 + k4*u.y + k6*u.z + k7*u.y*u.z,
-            k2 + k5*u.z + k4*u.x + k7*u.z*u.x,
-            k3 + k6*u.x + k5*u.y + k7*u.x*u.y
-        )
-    );
-}
 const mat3 m3  = mat3( 0.00,  0.80,  0.60,
                       -0.80,  0.36, -0.48,
                       -0.60, -0.48,  0.64 );
 const mat3 m3i = mat3( 0.00, -0.80, -0.60,
                        0.80,  0.36, -0.48,
                        0.60, -0.48,  0.64 );
-
-vec4 fbmDS(vec3 x, int octaves, float lacunarity, float gain) {
-    float amplitude = 1.0;
-    float frequency = 1.0;
-    vec4 total = vec4(0.0);
-    mat3 rot = mat3(0.8,-0.6,0.0,
-                    0.6,0.8,0.0,
-                    0.0,0.0,1.0);
-    
-    for(int i = 0; i < octaves; i++) {
-        vec4 n = noiseDS(x * frequency);
-        total += vec4(n.xyz * amplitude, amplitude);
-        
-        // Accumulate derivatives with proper rotation
-        total.xyz += n.yzw * amplitude * frequency;
-        
-        amplitude *= gain;
-        frequency *= lacunarity;
-        x = rot * x; // Rotate domain for better noise variation
-    }
-    return total;
-}
 
 vec4 noised(vec3 x )
 {
