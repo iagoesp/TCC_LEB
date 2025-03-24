@@ -137,8 +137,7 @@ void main()
     o_Normal = vec3(1.0);
 
     if(ComputeDerivateNormals()){
-        o_Normal = fbmd_inigo(attrib.position.xyz, 7).ywz;
-        o_Normal = normalize(o_Normal);
+        o_Normal = normalize(fbmd_inigo(o_WorldPos.xyz, 16).yzw);
     }
 }
 #endif

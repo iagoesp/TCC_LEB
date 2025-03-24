@@ -675,9 +675,6 @@ vec4 noised(vec3 x )
                                       k3 + k6*u.x + k5*u.y + k7*u.x*u.y ) );
 }
 
-
-
-
 bool ComputeDerivateNormals(){
     return bool(u_DerivativeNormals);
 }
@@ -704,6 +701,46 @@ vec4 fbmd_inigo( vec3 x, int octaves )
 	return vec4( aa, d );
 }
 
+vec3 noised( in vec2 x )
+{
+    vec2 p = floor(x);
+    vec2 f = fract(x);
+
+    vec2 u = f*f*(3.0-2.0*f);
+
+    float aa = hash(p+0.0);
+    float b = hash(p+1.0);
+    float c = hash(p+317.0);
+    float d = hash(p+318.0);
+	
+	return vec3(a+(b-aa)*u.x+(c-aa)*u.y+(aa-b-c+d)*u.x*u.y,
+				6.0*f*(1.0-f)*(vec2(b-aa,c-aa)+(aa-b-c+d)*u.yx));
+}
+
+const float scale  = 0.003;
+const float height = 180.0;
+
+vec4 fbmd(vec2 x )
+{
+    float aa = 0.0;
+    float b = 1.0;
+	float f = 1.0;
+    vec2  d = vec2(0.0);
+    for( int i=0; i<10; i++ ) // 10 octaves
+    {
+        vec3 n = noised(f*x*scale);
+        aa += b*n.x;           // accumulate values		
+        d += b*n.yz*f*scale;  // accumulate derivatives (note that in this case b*f=1.0)
+        b *= 0.5;             // amplitude decrease
+        f *= 2.0;             // frequency increase
+    }
+
+	aa *= height;
+	d *= height;
+	
+	// compute normal based on derivatives
+	return vec4( a, normalize( vec3(-d.x,1.0,-d.y) ) );
+}
 /*******************************************************************************
  * ShadeFragment -- Fragement shading routine
  *
