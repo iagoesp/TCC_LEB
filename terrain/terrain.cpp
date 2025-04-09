@@ -26,6 +26,7 @@
 #include <thread>
 #include<unistd.h>
 #include <SDL2/SDL.h>
+#include <sstream>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -140,14 +141,16 @@ enum {
     INVERSO
 };
 enum {
-    RIDGED,
-    FBM,
-    RIDGEDFBM,
+    NONE,
+    DERIVATIVENORMALS,
+    PARTIALDERIVATIVE,
+    NORMALMAP,
 };
 
 //Declaração de variáveis para GPU
 static ImVec4 colorig;
 bool derivative_normals = false;
+bool texture_normals = false;
 float color0[3] = {200.f/255.f, 181.f/255.f,152.f/255.f};
 float color1[3] = {219.f/255.f, 153.f/255.f, 72.f/255.f};
 float color2[3] = {133.f/255.f, 40.f/255.f, 0.f/255.f};
@@ -167,8 +170,7 @@ float noiseH0 = 10000.f;
 
 
 //Variaveis personalizaveis do FBM
-int noise = FBM;
-int mountain_inverse = MONTANHA;
+int normalsTag = NONE;
 int scaleTER = 10;
 int seeds = 42;
 float elevation = 2.5f;
@@ -198,12 +200,14 @@ struct TerrainManager {
     int maxDepth;
     uint32_t nodeCount;
     float size;
+    int normalGridHeight;
+    int normalGridWidth;
 } g_terrain = {
     {true, true, false, false, true},
     {std::string(PATH_TO_ASSET_DIRECTORY "./kauai.png"),
      SIZE_TERRAIN,SIZE_TERRAIN, 0.0f, 2000.0f,
      3.0f},
-    METHOD_CS,
+    METHOD_TS,
     SHADING_DIFFUSE,
     3,
     7.0f,
@@ -306,6 +310,7 @@ enum {
     BUFFER_SPHERE_INDEXES,
     BUFFER_CBT_NODE_COUNT,
     //BUFFER_TRANSFORM_FEEDBACK,
+    BUFFER_HEIGHTMAP_OUTPUT,
 
     BUFFER_COUNT
 };
@@ -333,7 +338,7 @@ enum {
     PROGRAM_BATCH,
     PROGRAM_SKY,
     PROGRAM_CBT_NODE_COUNT,
-    //PROGRAM_TRANSFORM_FEEDBACK,
+    PROGRAM_HEIGHTMAP_GENERATION,
 
     PROGRAM_COUNT
 };
@@ -370,8 +375,13 @@ enum {
     UNIFORM_TERRAIN_NOISEH2,
     UNIFORM_TERRAIN_NOISEH3,
     UNIFORM_TERRAIN_DERIVATIVENORMALS,
+    UNIFORM_TERRAIN_APPLYTEXTURENORMALS,
+
     UNIFORM_TERRAIN_CAMPOSITION,
     UNIFORM_TERRAIN_FREEZE,
+    UNIFORM_TERRAIN_SIZE,
+    UNIFORM_TERRAIN_NORMAL_GRID_WIDTH,
+    UNIFORM_TERRAIN_NORMAL_GRID_HEIGHT,
 
     UNIFORM_SPLIT_DMAP_SAMPLER,
     UNIFORM_SPLIT_SMAP_SAMPLER,
@@ -398,8 +408,12 @@ enum {
     UNIFORM_SPLIT_NOISEH2,
     UNIFORM_SPLIT_NOISEH3,
     UNIFORM_SPLIT_DERIVATIVENORMALS,
+    UNIFORM_SPLIT_TEXTURENORMALS,
     UNIFORM_SPLIT_CAMPOSITION,
     UNIFORM_SPLIT_FREEZE,
+    UNIFORM_SPLIT_SIZE,
+    UNIFORM_SPLIT_NORMAL_GRID_WIDTH,
+    UNIFORM_SPLIT_NORMAL_GRID_HEIGHT,
 
     UNIFORM_MERGE_DMAP_SAMPLER,
     UNIFORM_MERGE_SMAP_SAMPLER,
@@ -426,8 +440,12 @@ enum {
     UNIFORM_MERGE_NOISEH2,
     UNIFORM_MERGE_NOISEH3,
     UNIFORM_MERGE_DERIVATIVENORMALS,
+    UNIFORM_MERGE_TEXTURENORMALS,
     UNIFORM_MERGE_CAMPOSITION,
     UNIFORM_MERGE_FREEZE,
+    UNIFORM_MERGE_SIZE,
+    UNIFORM_MERGE_NORMAL_GRID_WIDTH,
+    UNIFORM_MERGE_NORMAL_GRID_HEIGHT,
 
     UNIFORM_RENDER_DMAP_SAMPLER,
     UNIFORM_RENDER_SMAP_SAMPLER,
@@ -454,8 +472,12 @@ enum {
     UNIFORM_RENDER_NOISEH2,
     UNIFORM_RENDER_NOISEH3,
     UNIFORM_RENDER_DERIVATIVENORMALS,
+    UNIFORM_RENDER_APPLYTEXTURENORMALS,
     UNIFORM_RENDER_CAMPOSITION,
     UNIFORM_RENDER_FREEZE,
+    UNIFORM_RENDER_SIZE,
+    UNIFORM_RENDER_NORMAL_GRID_WIDTH,
+    UNIFORM_RENDER_NORMAL_GRID_HEIGHT,
 
     UNIFORM_TOPVIEW_DMAP_SAMPLER,
     UNIFORM_TOPVIEW_DMAP_FACTOR,
@@ -635,8 +657,10 @@ void ConfigureTerrainProgram(GLuint glp, GLuint offset)
     glProgramUniform3f(glp, g_gl.uniforms[UNIFORM_TERRAIN_COLORH2 + offset], color_backGround2[0],color_backGround2[1],color_backGround2[2]);
     glProgramUniform3f(glp, g_gl.uniforms[UNIFORM_TERRAIN_COLORH3 + offset], color_backGround3[0],color_backGround3[1],color_backGround3[2]);
     glProgramUniform1i(glp, g_gl.uniforms[UNIFORM_TERRAIN_DERIVATIVENORMALS + offset], derivative_normals);
+    glProgramUniform1i(glp, g_gl.uniforms[UNIFORM_TERRAIN_APPLYTEXTURENORMALS + offset], texture_normals);
     glProgramUniform3f(glp, g_gl.uniforms[UNIFORM_TERRAIN_CAMPOSITION + offset], g_camera.pos.x, g_camera.pos.y, g_camera.pos.z);
     glProgramUniform1i(glp, g_gl.uniforms[UNIFORM_TERRAIN_FREEZE + offset], g_terrain.flags.freeze);
+    glProgramUniform1i(glp, g_gl.uniforms[UNIFORM_TERRAIN_SIZE + offset], g_terrain.size);
 
     glProgramUniform1f(glp,
         g_gl.uniforms[UNIFORM_TERRAIN_DMAP_FACTOR + offset],
@@ -684,6 +708,13 @@ void ConfigureTerrainPrograms()
                             UNIFORM_MERGE_DMAP_SAMPLER - UNIFORM_TERRAIN_DMAP_SAMPLER);
     ConfigureTerrainProgram(g_gl.programs[PROGRAM_RENDER_ONLY],
                             UNIFORM_RENDER_DMAP_SAMPLER - UNIFORM_TERRAIN_DMAP_SAMPLER);
+
+    ConfigureTerrainProgram(g_gl.programs[PROGRAM_SPLIT],
+                            UNIFORM_SPLIT_SMAP_SAMPLER - UNIFORM_TERRAIN_SMAP_SAMPLER);
+    ConfigureTerrainProgram(g_gl.programs[PROGRAM_MERGE],
+                            UNIFORM_MERGE_SMAP_SAMPLER - UNIFORM_TERRAIN_SMAP_SAMPLER);
+    ConfigureTerrainProgram(g_gl.programs[PROGRAM_RENDER_ONLY],
+                            UNIFORM_RENDER_SMAP_SAMPLER - UNIFORM_TERRAIN_SMAP_SAMPLER);
 }
 
 // -----------------------------------------------------------------------------
@@ -798,7 +829,6 @@ bool LoadTerrainProgram(GLuint *glp, const char *flag, GLuint uniformOffset)
         djgp_push_string(djp, "#extension GL_NV_gpu_shader5 : require\n");
     }
     djgp_push_string(djp, "#extension GL_ARB_conservative_depth : enable\n");
-    
 
     switch (g_camera.projection) {
     case PROJECTION_RECTILINEAR:
@@ -885,8 +915,7 @@ bool LoadTerrainProgram(GLuint *glp, const char *flag, GLuint uniformOffset)
     g_gl.uniforms[UNIFORM_TERRAIN_HEIGHT2 + uniformOffset] =
         glGetUniformLocation(*glp, "u_Height2");
     g_gl.uniforms[UNIFORM_TERRAIN_HEIGHT3 + uniformOffset] =
-        glGetUniformLocation(*glp, "u_Height3");
-///*     
+        glGetUniformLocation(*glp, "u_Height3"); 
     g_gl.uniforms[UNIFORM_TERRAIN_COLORH0 + uniformOffset] =
         glGetUniformLocation(*glp, "u_ColorH0");
     g_gl.uniforms[UNIFORM_TERRAIN_COLORH1 + uniformOffset] =
@@ -905,13 +934,18 @@ bool LoadTerrainProgram(GLuint *glp, const char *flag, GLuint uniformOffset)
         glGetUniformLocation(*glp, "u_NoiseH3");
     g_gl.uniforms[UNIFORM_TERRAIN_DERIVATIVENORMALS + uniformOffset] =
         glGetUniformLocation(*glp, "u_DerivativeNormals");
+    g_gl.uniforms[UNIFORM_TERRAIN_APPLYTEXTURENORMALS + uniformOffset] =
+        glGetUniformLocation(*glp, "u_ApplyTextureNormals");
     g_gl.uniforms[UNIFORM_TERRAIN_CAMPOSITION + uniformOffset] =
         glGetUniformLocation(*glp, "u_CamPosition");
     g_gl.uniforms[UNIFORM_TERRAIN_FREEZE + uniformOffset] =
         glGetUniformLocation(*glp, "u_Freeze");
-        
-        
-       // */
+    g_gl.uniforms[UNIFORM_TERRAIN_SIZE + uniformOffset] =
+        glGetUniformLocation(*glp, "u_TerrainSize");   
+    g_gl.uniforms[UNIFORM_TERRAIN_NORMAL_GRID_WIDTH] =
+        glGetUniformLocation(*glp, "u_NormalGridWidth");
+    g_gl.uniforms[UNIFORM_TERRAIN_NORMAL_GRID_HEIGHT] =
+        glGetUniformLocation(*glp, "u_NormalGridHeight");
     g_gl.uniforms[UNIFORM_TERRAIN_DMAP_FACTOR + uniformOffset] =
         glGetUniformLocation(*glp, "u_DmapFactor");
     g_gl.uniforms[UNIFORM_TERRAIN_LOD_FACTOR + uniformOffset] =
@@ -1191,18 +1225,217 @@ bool LoadCbtNodeCountProgram()
     return (glGetError() == GL_NO_ERROR);
 }
 
+bool LoadHeightmapGenerationProgram() {
+    LOG("Iniciando carregamento do programa de heightmap generation\n");
+    GLuint *glp = &g_gl.programs[PROGRAM_HEIGHTMAP_GENERATION];
+    
+    // Limpar programa existente se houver
+    if (glIsProgram(*glp)) {
+        LOG("Deletando programa existente...\n");
+        glDeleteProgram(*glp);
+    }
+
+    // 1. Criar shader
+    GLuint computeShader = glCreateShader(GL_COMPUTE_SHADER);
+    if (computeShader == 0) {
+        LOG("ERRO: Falha ao criar objeto de compute shader\n");
+        return false;
+    }
+    LOG("Objeto de compute shader criado com sucesso (ID: %u)\n", computeShader);
+
+    // 2. Carregar código fonte
+    std::string filePath = std::string(PATH_TO_SRC_DIRECTORY) + "./terrain/shaders/HeightmapGeneration.glsl";
+    LOG("Tentando carregar shader de: %s\n", filePath.c_str());
+    
+    std::ifstream shaderFile(filePath);
+    if (!shaderFile.is_open()) {
+        LOG("ERRO: Não foi possível abrir o arquivo do shader\n");
+        glDeleteShader(computeShader);
+        return false;
+    }
+
+    std::stringstream buffer;
+    buffer << shaderFile.rdbuf();
+    std::string shaderSource = buffer.str();
+    const char* sourcePtr = shaderSource.c_str();
+    
+    LOG("Código do shader carregado (%zu bytes)\n", shaderSource.size());
+
+    // 3. Compilar shader
+    glShaderSource(computeShader, 1, &sourcePtr, NULL);
+    glCompileShader(computeShader);
+
+    // Verificar compilação
+    GLint success;
+    glGetShaderiv(computeShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        GLchar infoLog[1024];
+        glGetShaderInfoLog(computeShader, sizeof(infoLog), NULL, infoLog);
+        LOG("ERRO DE COMPILAÇÃO:\n%s\n", infoLog);
+        glDeleteShader(computeShader);
+        return false;
+    }
+    LOG("Shader compilado com sucesso\n");
+
+    // 4. Criar programa
+    *glp = glCreateProgram();
+    if (*glp == 0) {
+        LOG("ERRO: Falha ao criar objeto de programa\n");
+        glDeleteShader(computeShader);
+        return false;
+    }
+    LOG("Objeto de programa criado (ID: %u)\n", *glp);
+
+    // 5. Anexar e linkar
+    glAttachShader(*glp, computeShader);
+    glLinkProgram(*glp);
+
+    // Verificar linkagem
+    glGetProgramiv(*glp, GL_LINK_STATUS, &success);
+    if (!success) {
+        GLchar infoLog[1024];
+        glGetProgramInfoLog(*glp, sizeof(infoLog), NULL, infoLog);
+        LOG("ERRO DE LINKAGEM:\n%s\n", infoLog);
+        glDeleteProgram(*glp);
+        glDeleteShader(computeShader);
+        return false;
+    }
+    LOG("Programa linkado com sucesso\n");
+
+    // Limpeza
+    glDetachShader(*glp, computeShader);
+    glDeleteShader(computeShader);
+
+    // Verificação final
+    if (!glIsProgram(*glp)) {
+        LOG("ERRO: Programa criado mas glIsProgram() retorna falso\n");
+        return false;
+    }
+
+    LOG("Programa de heightmap carregado com sucesso (ID: %u)\n", *glp);
+    return true;
+}
+// Adicione esta função para verificar o status de compilação do shader
+bool CheckShaderCompileStatus(GLuint shader) {
+    GLint isCompiled = 0;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &isCompiled);
+    if (isCompiled == GL_FALSE) {
+        GLint maxLength = 0;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
+        std::vector<GLchar> errorLog(maxLength);
+        glGetShaderInfoLog(shader, maxLength, &maxLength, &errorLog[0]);
+        LOG("Erro de compilação do shader: %s\n", errorLog.data()); // Garanta que LOG está funcionando
+        glDeleteShader(shader);
+        return false;
+    }
+    return true;
+}
+
+// Adicione esta função para verificar o status de linkagem do programa
+bool CheckProgramLinkStatus(GLuint program) {
+    GLint isLinked = 0;
+    glGetProgramiv(program, GL_LINK_STATUS, &isLinked);
+    
+    if(isLinked == GL_FALSE) {
+        GLint maxLength = 0;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
+        
+        std::vector<GLchar> errorLog(maxLength);
+        glGetProgramInfoLog(program, maxLength, &maxLength, &errorLog[0]);
+        
+        LOG("Program linking error: %s\n", &errorLog[0]);
+        
+        glDeleteProgram(program);
+        return false;
+    }
+    
+    return true;
+}
+
+// Função alternativa para criar manualmente o programa de compute shader
+// Se o método djgp_to_gl não funcionar, você pode usar esta função
+bool LoadHeightmapGenerationProgramManual()
+{
+    GLuint *glp = &g_gl.programs[PROGRAM_HEIGHTMAP_GENERATION];
+    
+    // Verifica se já existe um programa e o deleta se necessário
+    if (glIsProgram(*glp))
+        glDeleteProgram(*glp);
+    
+    // Carrega o conteúdo do arquivo shader
+    std::ifstream shaderFile(PATH_TO_SRC_DIRECTORY "./terrain/shaders/HeightmapGeneration.glsl");
+    if (!shaderFile) {
+        LOG("Failed to open heightmap shader file\n");
+        return false;
+    }
+    
+    std::stringstream buffer;
+    buffer << shaderFile.rdbuf();
+    std::string shaderSource = buffer.str();
+    const char* sourcePtr = shaderSource.c_str();
+    
+    // Cria e compila o shader
+    GLuint computeShader = glCreateShader(GL_COMPUTE_SHADER);
+    glShaderSource(computeShader, 1, &sourcePtr, nullptr);
+    glCompileShader(computeShader);
+    
+    // Verifica se a compilação foi bem-sucedida
+    if (!CheckShaderCompileStatus(computeShader)) {
+        return false;
+    }
+    
+    // Cria o programa e anexa o shader
+    *glp = glCreateProgram();
+    glAttachShader(*glp, computeShader);
+    glLinkProgram(*glp);
+    
+    // Verifica se a linkagem foi bem-sucedida
+    if (!CheckProgramLinkStatus(*glp)) {
+        return false;
+    }
+    
+    // Limpa o shader após a linkagem
+    glDetachShader(*glp, computeShader);
+    glDeleteShader(computeShader);
+    
+    return true;
+}
+
+bool InitHeightmapBuffer(int size) {
+    if (glIsBuffer(g_gl.buffers[BUFFER_HEIGHTMAP_OUTPUT])) {
+        glDeleteBuffers(1, &g_gl.buffers[BUFFER_HEIGHTMAP_OUTPUT]);
+    }
+    
+    glGenBuffers(1, &g_gl.buffers[BUFFER_HEIGHTMAP_OUTPUT]);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_gl.buffers[BUFFER_HEIGHTMAP_OUTPUT]);
+    
+    // Alocar memória (2 floats por pixel - height e height^2)
+    GLsizeiptr bufferSize = size * size * sizeof(float) * 2;
+    glBufferData(GL_SHADER_STORAGE_BUFFER, bufferSize, NULL, GL_DYNAMIC_COPY);
+    
+    // Verifique erros
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        LOG("ERRO ao criar buffer: 0x%x\n", err);
+        return false;
+    }
+    
+    LOG("Buffer de heightmap criado (tamanho: %zu bytes)\n", bufferSize);
+    return true;
+}
 
 // -----------------------------------------------------------------------------
 /**
  * Load All Programs
  *
  */
+
 bool LoadPrograms()
 {
     bool v = true;
     //LOG("%s\n", "*LoadPrograms");
 
-
+    if (v) v &= LoadHeightmapGenerationProgram();
     if (v) v &= LoadViewerProgram();
     if (v) v &= LoadTerrainPrograms();
     if (v) v &= LoadLebReductionProgram();
@@ -1311,60 +1544,73 @@ bool LoadSceneFramebufferTexture()
 /**
  * Load the Normal Texture Map
  *
- * This Loads an RG32F texture used as a slope map
  */
-void gerarNormal(int smapID, std::vector<uint16_t> texels, int w, int h)
+
+template <typename T, typename I, typename O>
+int MapInRange(T x, I in_min, I in_max, O out_min, O out_max)
 {
-    int mipcnt = djgt__mipcnt(w, h, 1);
+	if(x < in_min) x = in_min;
+	if(x > in_max) x = in_max;
+	return (int)((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min);
+}
 
-    std::vector<float> smap(w * h * 2);
-
-    for (int j = 0; j < h; ++j){
-        for (int i = 0; i < w; ++i) {
+void gerarNormal(int smapID, const std::vector<uint16_t>& texels, int w, int h) {
+    // Criar vetores para armazenar as normais
+    std::vector<glm::vec3> normais(w * h, glm::vec3(0.0f));
+    
+    // Calcular as normais para cada ponto usando diferenças de h
+    for (int z = 0; z < h - 1; z++) {
+        for (int x = 0; x < w - 1; x++) {
+            // Obter hs dos pontos vizinhos
+            glm::vec2 pos = glm::vec2(x, z);
+            float h00 = texels[z * w + x] * g_terrain.dmap.scale;
+            float h10 = texels[z * w + (x + 1)] * g_terrain.dmap.scale;
+            float h01 = texels[(z + 1) * w + x] * g_terrain.dmap.scale;
             
-            int i1 = std::max(0, i - 1);
-            int i2 = std::min(w - 1, i + 1);
-            int j1 = std::max(0, j - 1);
-            int j2 = std::min(h - 1, j + 1);
+            // Calcular vetores tangentes
+            glm::vec3 tangentX(1.0f, h10 - h00, 0.0f);
+            glm::vec3 tangentZ(0.0f, h01 - h00, 1.0f);
             
-            uint16_t px_l = texels[i1 + w * j]; // in [0,2^16-1]
-            uint16_t px_r = texels[i2 + w * j]; // in [0,2^16-1]
-            uint16_t px_b = texels[i + w * j1]; // in [0,2^16-1]
-            uint16_t px_t = texels[i + w * j2]; // in [0,2^16-1]
-            float z_l = (float)px_l / 65535.0f; // in [0, 1]
-            float z_r = (float)px_r / 65535.0f; // in [0, 1]
-            float z_b = (float)px_b / 65535.0f; // in [0, 1]
-            float z_t = (float)px_t / 65535.0f; // in [0, 1]
-            float slope_x = (float)w * 0.5f * (z_r - z_l);
-            float slope_y = (float)h * 0.5f * (z_t - z_b); 
-
-            smap[    2 * (i + w * j)] = slope_x;
-            smap[1 + 2 * (i + w * j)] = slope_y;
-        }  
-    } 
-
+            // Calcular normal usando produto vetorial
+            glm::vec3 normal = glm::normalize(glm::cross(tangentZ, tangentX));
+            glm::vec3 dnormal = Simplex::dfBm(pos, 16,1.9495,0.5);
+            normal = glm::vec3(dnormal.y, dnormal.z, 1);
+            
+            // Acumular a normal para este vértice
+            normais[z * w + x] = normal;
+        }
+    }
+    
+    // Normalizar todos os vetores normais
+    for (auto& normal : normais) {
+        normal = glm::normalize(normal);
+    }
+    
+    // Converter normais para formato de textura (RGB de 0-255)
+    std::vector<unsigned char> dadosTextura(w * h * 3);
+    for (int i = 0; i < w * h; i++) {
+        // Mapear componentes de -1,1 para 0,255
+        dadosTextura[i * 3 + 0] = static_cast<unsigned char>((normais[i].x));
+        dadosTextura[i * 3 + 1] = static_cast<unsigned char>((normais[i].y));
+        dadosTextura[i * 3 + 2] = static_cast<unsigned char>((normais[i].z));
+    }
+    
+    // Criar e configurar a textura de normais
+    glActiveTexture(GL_TEXTURE0 + smapID);
     if (glIsTexture(g_gl.textures[smapID]))
         glDeleteTextures(1, &g_gl.textures[smapID]);
+
 
     glGenTextures(1, &g_gl.textures[smapID]);
     glActiveTexture(GL_TEXTURE0 + smapID);
     glBindTexture(GL_TEXTURE_2D, g_gl.textures[smapID]);
-    glTexStorage2D(GL_TEXTURE_2D, mipcnt, GL_RG32F, w, h);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RG, GL_FLOAT, &smap[0]);
-
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, dadosTextura.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glGenerateMipmap(GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D,
-        GL_TEXTURE_MIN_FILTER,
-        GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D,
-        GL_TEXTURE_WRAP_S,
-        GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D,
-        GL_TEXTURE_WRAP_T,
-        GL_CLAMP_TO_EDGE);
-    glActiveTexture(GL_TEXTURE0);
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 // Funções para geração de altura e normalização do terreno
 ////////////////////////////////////////////////////////////////////////////////
@@ -1407,144 +1653,165 @@ void gerarAltura(int startH, int endH, int w, float tamAmostra, float *zf_arr) {
 bool gerarTextura(int dmapID, int smapID)
 {
     double lastTime = glfwGetTime();
-    double deltaTime = 0;
-    djg_texture *djgt = djgt_create(1);
-
-
-    // Variaveis inseridas para o projeto
-    float max = -INFINITY;
-    float min = INFINITY;
-    float scale = 2.f; // Escala do FBM
-
-
-    // Configuração do tamanho da malha do terreno
-    int nThreads = 12;
-    int size = pow(2,nThreads);
+    
+    int size = 2048;
     int w = size;
-    int part = size / nThreads;                 // Divide em partes para paralelização
-    int h = w;
-
+    int h = size;
     int mipcnt = djgt__mipcnt(w, h, 1);
-    std::vector<uint16_t> dmap(w * h * 2);
-
-    std::vector<uint16_t> texels2(w*h);
-    std::vector<float> normals(w*h*2);
-    float *zf_arr = new float [w*h];            // Armazena as alturas
     
-    float tamAmostra = 0.0001*(float)scaleTER;  // Define o tamanho da amostra
+    if (!glIsProgram(g_gl.programs[PROGRAM_HEIGHTMAP_GENERATION])) {
+        LOG("Erro: Programa de compute shader inválido\n");
+        return false;
+    }
+
+    glUseProgram(g_gl.programs[PROGRAM_HEIGHTMAP_GENERATION]);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        LOG("Erro ao ativar programa: 0x%x\n", err);
+        return false;
+    }
+
+    LOG("Heighmap %i\n", g_gl.programs[PROGRAM_HEIGHTMAP_GENERATION]);
+    if (!glIsProgram(g_gl.programs[PROGRAM_HEIGHTMAP_GENERATION])) {
+        std::cerr << "Erro: Programa de compute shader para heightmap não está disponível" << std::endl;
+        return false;
+    }
     
-    //LOG("Loading --------------tamAmostra%f\n", tamAmostra);
-    std::vector<glm::vec3> positions(w*h);
-    Simplex::seed(seeds);                       // Semente do ruído simplex
-/*     LOG("Size: %i\n", part);
-    LOG("Tamanho da Malha: %i\n", w); */
-
-    // Divide a malha em partes para melhorar o desempenho
-    int sz0 = part*0;
-    int sz1 = part*1;
-    int sz2 = part*2;
-    int sz3 = part*3;
-    int sz4 = part*4;
-    int sz5 = part*5;
-    int sz6 = part*6;
-    int sz7 = part*7;
-    int sz8 = part*8;
-    int sz9 = part*9;
-    int sz10 = part*10;
-    int sz11 = part*11;
-
-    std::thread th1(gerarAltura, sz0, sz1, w, tamAmostra, zf_arr);
-    std::thread th2(gerarAltura, sz1, sz2, w, tamAmostra, zf_arr);
-    std::thread th3(gerarAltura, sz2, sz3, w, tamAmostra, zf_arr);
-    std::thread th4(gerarAltura, sz3, sz4, w, tamAmostra, zf_arr);
-    std::thread th5(gerarAltura, sz4, sz5, w, tamAmostra, zf_arr);
-    std::thread th6(gerarAltura, sz5, sz6, w, tamAmostra, zf_arr);
-    std::thread th7(gerarAltura, sz6, sz7, w, tamAmostra, zf_arr);
-    std::thread th8(gerarAltura, sz7, sz8, w, tamAmostra, zf_arr);
-    std::thread th9(gerarAltura, sz8, sz9, w, tamAmostra, zf_arr);
-    std::thread th10(gerarAltura, sz9, sz10, w, tamAmostra, zf_arr);
-    std::thread th11(gerarAltura, sz10, sz11, w, tamAmostra, zf_arr);
-    std::thread th12(gerarAltura, sz11, w, w, tamAmostra, zf_arr);
-
-    th1.join();
-    th2.join();
-    th3.join();
-    th4.join();
-    th5.join();
-    th6.join();
-    th7.join();
-    th8.join();
-    th9.join();
-    th10.join();
-    th11.join();
-    th12.join();
-  
-    //Normaliza os valores
-    for (int j = 0; j < h; ++j){
-        for (int i = 0; i < w; ++i) {
-
-            float height = zf_arr[i + w*j];         
-
-            min = glm::min(min, height);
-
-            max = glm::max(max, height);
+    if (glIsBuffer(g_gl.buffers[BUFFER_HEIGHTMAP_OUTPUT]))
+        glDeleteBuffers(1, &g_gl.buffers[BUFFER_HEIGHTMAP_OUTPUT]);
+        
+    glGenBuffers(1, &g_gl.buffers[BUFFER_HEIGHTMAP_OUTPUT]);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_gl.buffers[BUFFER_HEIGHTMAP_OUTPUT]);
+    
+    glBufferData(GL_SHADER_STORAGE_BUFFER, size * size * sizeof(float) * 2, NULL, GL_DYNAMIC_COPY);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, g_gl.buffers[BUFFER_HEIGHTMAP_OUTPUT]);
+    
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        std::cerr << "Erro ao criar buffer do heightmap: " << err << std::endl;
+        return false;
+    }
+    
+    int numGroupsX = (size + 15) / 16;
+    int numGroupsY = (size + 15) / 16;
+    
+    double gpuStartTime = glfwGetTime();
+    
+    glUseProgram(g_gl.programs[PROGRAM_HEIGHTMAP_GENERATION]);
+    
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        std::cerr << "Erro ao ativar programa do compute shader: " << err << std::endl;
+        return false;
+    }
+    
+    GLint sizeLocation = glGetUniformLocation(g_gl.programs[PROGRAM_HEIGHTMAP_GENERATION], "size");
+    GLint seedLocation = glGetUniformLocation(g_gl.programs[PROGRAM_HEIGHTMAP_GENERATION], "seed");
+    GLint elevationLocation = glGetUniformLocation(g_gl.programs[PROGRAM_HEIGHTMAP_GENERATION], "elevation");
+    GLint octavesLocation = glGetUniformLocation(g_gl.programs[PROGRAM_HEIGHTMAP_GENERATION], "octaves");
+    GLint wavelengthLocation = glGetUniformLocation(g_gl.programs[PROGRAM_HEIGHTMAP_GENERATION], "wavelength");
+    GLint lacunarityLocation = glGetUniformLocation(g_gl.programs[PROGRAM_HEIGHTMAP_GENERATION], "lacunarity");
+    GLint gainLocation = glGetUniformLocation(g_gl.programs[PROGRAM_HEIGHTMAP_GENERATION], "gain");
+    
+    if (sizeLocation != -1) glUniform1i(sizeLocation, size);
+    if (seedLocation != -1) glUniform1i(seedLocation, seeds);
+    if (elevationLocation != -1) glUniform1f(elevationLocation, elevation);
+    if (octavesLocation != -1) glUniform1i(octavesLocation, octaves);
+    if (wavelengthLocation != -1) glUniform1f(wavelengthLocation, wavelength);
+    if (lacunarityLocation != -1) glUniform1f(lacunarityLocation, lacunarity);
+    if (gainLocation != -1) glUniform1f(gainLocation, gain);
+    
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        std::cerr << "Erro ao definir uniformes: " << err << std::endl;
+        return false;
+    }
+    
+    glDispatchCompute(numGroupsX, numGroupsY, 1);
+    
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        std::cerr << "Erro ao executar compute shader: " << err << std::endl;
+        return false;
+    }
+    
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    
+    double gpuEndTime = glfwGetTime();
+    double gpuDeltaTime = gpuEndTime - gpuStartTime;
+    std::cout << "Tempo de execução da geração do heightmap na GPU: " << gpuDeltaTime << " segundos" << std::endl;
+    
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_gl.buffers[BUFFER_HEIGHTMAP_OUTPUT]);
+    void* mappedData = glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+    
+    if (mappedData) {
+        struct vec2 { float x, y; };
+        vec2* heightmapData = (vec2*)mappedData;
+        
+        float min = INFINITY;
+        float max = -INFINITY;
+        
+        for (int j = 0; j < h; ++j) {
+            for (int i = 0; i < w; ++i) {
+                float height = heightmapData[i + w * j].x;
+                min = std::min(min, height);
+                max = std::max(max, height);
+            }
         }
+        
+        std::vector<uint16_t> dmap(w * h * 2);
+        std::vector<uint16_t> texels2(w * h);
+        
+        for (int j = 0; j < h; ++j) {
+            for (int i = 0; i < w; ++i) {
+                float h_value = (heightmapData[i + w * j].x - min) / (max - min);
+                
+                uint16_t h16 = uint16_t(h_value * ((1 << 16) - 1));
+                uint16_t h2 = h_value * h_value * ((1 << 16) - 1);
+                texels2[i + w * j] = h16;
+                
+                dmap[    2 * (i + w * j)] = h16;
+                dmap[1 + 2 * (i + w * j)] = h2;
+            }
+        }
+        
+        glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+        
+        double now = glfwGetTime();
+        double deltaTime1 = now - lastTime;
+        std::cout << "Tempo de processamento após geração na GPU: " << deltaTime1 << " segundos" << std::endl;
+        
+        double nowNormal = glfwGetTime();
+        
+        gerarNormal(smapID, texels2, w, h);
+        
+        glActiveTexture(GL_TEXTURE0 + dmapID);
+        if (glIsTexture(g_gl.textures[dmapID]))
+            glDeleteTextures(1, &g_gl.textures[dmapID]);
+        
+        glGenTextures(1, &g_gl.textures[dmapID]);
+        glActiveTexture(GL_TEXTURE0 + dmapID);
+        glBindTexture(GL_TEXTURE_2D, g_gl.textures[dmapID]);
+        glTexStorage2D(GL_TEXTURE_2D, mipcnt, GL_RG16, w, h);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RG, GL_UNSIGNED_SHORT, &dmap[0]);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glActiveTexture(GL_TEXTURE0);
+        
+        now = glfwGetTime();
+        double deltaTime2 = now - nowNormal;
+        std::cout << "Tempo de execução para geração de normais: " << deltaTime2 << " segundos" << std::endl;
+        std::cout << "Tempo total de execução: " << now - lastTime << " segundos" << std::endl;
+    } else {
+        std::cerr << "Erro ao mapear o buffer do heightmap" << std::endl;
+        return false;
     }
+    // Desativa o programa do compute shader
+    glUseProgram(0);
 
-    for (int j = 0; j < h; ++j){
-        for (int i = 0; i < w; ++i) {  
-            float h = (zf_arr[i + w*j]-min)/(max-min);
-
-            uint16_t h16 = uint16_t(h * ((1 << 16) - 1));
-            uint16_t h2 = h * h * ((1 << 16) - 1);
-            texels2[i + w * j] = h16;
-                        
-            // Implementação original
-            dmap[    2 * (i + w * j)] = h16;
-            dmap[1 + 2 * (i + w * j)] = h2;
-        }        
-    }
-    
-    // Exiba o tempo de execução
-    double now = glfwGetTime();
-    double deltaTime1 = now - lastTime;
-    std::cout << "Tempo de execução da textura: " << deltaTime1 << " segundos" << std::endl;
-    
-    double nowNormal = glfwGetTime();
-
-    // Load nmap from dmap
-    gerarNormal(smapID, texels2, w,h);
-    
-
-    glActiveTexture(GL_TEXTURE0 + dmapID);
-    if (glIsTexture(g_gl.textures[dmapID]))
-        glDeleteTextures(1, &g_gl.textures[dmapID]);
-
-    glGenTextures(1, &g_gl.textures[dmapID]);
-    glActiveTexture(GL_TEXTURE0 + dmapID);
-    glBindTexture(GL_TEXTURE_2D, g_gl.textures[dmapID]);
-    glTexStorage2D(GL_TEXTURE_2D, mipcnt, GL_RG16, w, h);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RG, GL_UNSIGNED_SHORT, &dmap[0]);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D,
-                    GL_TEXTURE_MIN_FILTER,
-                    GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D,
-                    GL_TEXTURE_MAG_FILTER,
-                    GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D,
-                    GL_TEXTURE_WRAP_S,
-                    GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D,
-                    GL_TEXTURE_WRAP_T,
-                    GL_CLAMP_TO_EDGE);
-    glActiveTexture(GL_TEXTURE0);
-    now = glfwGetTime();
-    double deltaTime2 = now - nowNormal;
-    std::cout << "Tempo de execução com a normal: " << deltaTime2 << " segundos" << std::endl;
-    std::cout << "Tempo de execução com a normal e textura: " << deltaTime1 + deltaTime2 << " segundos" << std::endl;
-
-    djgt_release(djgt);
     return (glGetError() == GL_NO_ERROR);
 }
 
@@ -2200,11 +2467,11 @@ void init()
         g_gl.clocks[i] = djgc_create();
     }
 
+    if (v) v &= LoadPrograms();
     if (v) v &= LoadTextures();
     if (v) v &= LoadBuffers();
     if (v) v &= LoadFramebuffers();
     if (v) v &= LoadVertexArrays();
-    if (v) v &= LoadPrograms();
     if (v) v &= LoadQueries();
 
 
@@ -2999,31 +3266,59 @@ void renderViewer()
                 "Mountains",
                 "Inverse Mountains"
             };
-            const char* eSurfaceNoise[] = {
-                    "RIDGED",
-                    "FBM",
-                    "RIDGEDFBM",
+            const char* eNormals[] = {
+                    "From Heightmap",
+                    "Derivative Normals",
+                    "Normalmap",
             };
+            if (ImGui::Combo("Normals", &normalsTag, &eNormals[0], BUFFER_SIZE(eNormals))){
+                LOG("Normals = %i\n", normalsTag);
+                if(normalsTag == 1){
+                    derivative_normals = true;
+                    texture_normals = false;
+                }
+                else if(normalsTag == 2){
+                    texture_normals = true;
+                    derivative_normals = false;
+                }
+                else{
+                    derivative_normals = false;
+                    texture_normals = false;                
 
-            if (ImGui::SliderInt("Seed", &seeds, 0, 100)) 
+                }
+            }
+            if (ImGui::SliderInt("Seed", &seeds, 0, 100)){
                 LOG("Seed = %i\n", seeds);
-            if (ImGui::Combo("Surface Noise", &noise, &eSurfaceNoise[0], BUFFER_SIZE(eSurfaceNoise)))
-                LOG("Surface Noise = %i\n", noise);
+                LoadDmapTexture();
+            }
 
-            if (ImGui::SliderInt("Scale", &scaleTER, 0, 15))
+            if (ImGui::SliderInt("Scale", &scaleTER, 0, 1000)){
                 LOG("Amostra = %i\n", scaleTER);
-            
-            if (ImGui::SliderFloat("Valley", &elevation, 0.0f, 8.0f, "%0.01f"))
+                LoadDmapTexture();
+            }            
+            if (ImGui::SliderFloat("Valley", &elevation, 0.0f, 8.0f, "%0.01f")){
                 LOG("void Int = %f\n", elevation);  
-            if (ImGui::SliderInt("Octaves", &octaves, 0, 32))
+                LoadDmapTexture();
+            }
+            if (ImGui::SliderInt("Octaves", &octaves, 0, 32)){
                 LOG("Octaves = %f\n", octaves);
-
-            if (ImGui::SliderFloat("Wavelength", &wavelength, 0.f, 10.f, "%0.01f"))
+                LoadDmapTexture();
+            }
+            if (ImGui::SliderFloat("Wavelength", &wavelength, 0.0001f, 1000.f, "%0.0001f"))
+            {
                 LOG("Wavelength = %f\n", wavelength);
+                LoadDmapTexture();
+            }
             if (ImGui::SliderFloat("Lacunarity", &lacunarity, 0.f, 16.f, "%0.5f"))
+            {
                 LOG("Lacunarity = %f\n", lacunarity);
+                LoadDmapTexture();
+            }
             if (ImGui::SliderFloat("Gain", &gain, 0.f, 1.f, "%0.01f"))
+            {
                 LOG("Gain = %f\n", gain);
+                LoadDmapTexture();
+            }
             if (ImGui::Checkbox("Derivative Normals", &derivative_normals))
                 LOG("Derivative Normals= %i\n", derivative_normals);
         }
@@ -3036,7 +3331,6 @@ void renderViewer()
         {
             if (ImGui::Button("Terrain A")){
                 seeds = 42;
-                mountain_inverse = MONTANHA;
                 scaleTER = 10;
 
                 elevation = 2.5f;
@@ -3052,7 +3346,6 @@ void renderViewer()
 
             if (ImGui::Button("Terrain B")){
                 seeds = 42;
-                mountain_inverse = MONTANHA;
                 scaleTER = 10;
 
                 elevation = 4.f;
@@ -3075,7 +3368,6 @@ void renderViewer()
 
             if (ImGui::Button("Terrain C")){
                 seeds = 42;
-                mountain_inverse = MONTANHA;
                 scaleTER = 10;
 
                 elevation = 5.0f;
@@ -3088,7 +3380,6 @@ void renderViewer()
 
             if (ImGui::Button("Reset")){
                 seeds = 1000;
-                mountain_inverse = MONTANHA;
                 scaleTER = 8;
 
                 octaves = 14;
@@ -3117,9 +3408,6 @@ void renderViewer()
             color_backGround0[0] = color0[0];
             color_backGround0[1] = color0[1];
             color_backGround0[2] = color0[2];
-            //LOG("color0 %f\n", color_backGround0[0]);
-            //LOG("color0 %f\n", color_backGround0[1]);
-            //LOG("color0 %f\n", color_backGround0[2]);
             ConfigureTerrainPrograms();
 
         };

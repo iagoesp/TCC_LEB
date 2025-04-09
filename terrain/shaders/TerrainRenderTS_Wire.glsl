@@ -138,6 +138,9 @@ void main()
     );
 
     // set varyings
+    vec3 _normal = dfBm(o_WorldPos.xz, 16, 1.9495, 0.5 );
+    attrib.position.z +=_normal.x/10.f;
+
     gl_Position = u_ModelViewProjectionMatrix * attrib.position;
     o_TexCoord  = attrib.texCoord;
     o_WorldPos  = (u_ModelMatrix * attrib.position).xyz;

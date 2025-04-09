@@ -47,8 +47,14 @@ void main()
     o_TexCoord  = attrib.texCoord;
     o_WorldPos  = (u_ModelMatrix * attrib.position).xyz;
     o_Normal = vec3(1.0);
-    if(ComputeDerivateNormals())
-        o_Normal = abs(DerivativeFBM(o_WorldPos.xyz, 16, 1.95f, 0.5f).yzw);
+    if(ComputeDerivateNormals()) {
+        // Use analytical derivative for normal calculation
+        o_Normal = normalize(fbmd_inigo(o_WorldPos.xyz, 16).yzw);
+    }
+    else if(ApplyTextureNormals()){
+        o_Normal = GetNormalFromMap(o_TexCoord);
+    }
+    
 
 }
 #endif

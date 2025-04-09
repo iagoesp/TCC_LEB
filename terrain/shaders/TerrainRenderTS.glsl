@@ -131,14 +131,21 @@ void main()
         gl_TessCoord.xy
     );
 
+    o_Normal = vec3(1.0);
+    //vec3 _normal = dfBm(o_WorldPos.xz, 4, 1.9495, 0.5 );
+    //attrib.position.z -= abs(_normal.x*0.01f);
+
+    if(ComputeDerivateNormals()) {
+        // Use analytical derivative for normal calculation
+        //o_Normal = normalize(vec3(_normal.y, _normal.z, 1));
+    }
+    else if(ApplyTextureNormals()){
+        o_Normal = GetNormalFromMap(o_TexCoord);
+    }
     gl_Position = u_ModelViewProjectionMatrix * attrib.position;
     o_TexCoord  = attrib.texCoord;
     o_WorldPos  = (u_ModelMatrix * attrib.position).xyz;
-    o_Normal = vec3(1.0);
 
-    if(ComputeDerivateNormals()){
-        o_Normal = normalize(fbmd_inigo(o_WorldPos.xyz, 16).yzw);
-    }
 }
 #endif
 
