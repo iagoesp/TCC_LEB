@@ -1654,7 +1654,7 @@ bool gerarTextura(int dmapID, int smapID)
 {
     double lastTime = glfwGetTime();
     
-    int size = 2048;
+    int size = 1024;
     int w = size;
     int h = size;
     int mipcnt = djgt__mipcnt(w, h, 1);
